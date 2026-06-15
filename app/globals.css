@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+  
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background-color: white !important;
+  }
+
+  /* Hide sidebar and top header */
+  #sidebar, 
+  #main-header,
+  #report-controls,
+  #btn-export-pdf {
+    display: none !important;
+  }
+
+  /* Force the main layout to stretch full width without padding */
+  #main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Specific rules for the preview container */
+  #report-preview-container {
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+}

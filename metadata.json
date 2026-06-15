@@ -1,0 +1,6 @@
+{
+  "name": "Ilusa Marketing Ops Dashboard",
+  "description": "Marketing Operations Dashboard and complete Supabase SQL schema for agency Ilusa.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
