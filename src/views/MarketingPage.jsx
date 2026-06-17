@@ -43,6 +43,20 @@ const STATUS_COLORS = {
   Scheduled: 'bg-purple-50 border-purple-300 text-purple-700'
 };
 
+const sanitizeMoneyToNumber = (val) => {
+  if (!val) return 0;
+  let str = String(val).trim();
+  // Strip non-digits except commas and dots
+  str = str.replace(/[^0-9.,]/g, '');
+  // If it ends with ,00 or .00, strip it
+  if (str.endsWith(',00') || str.endsWith('.00')) {
+    str = str.slice(0, -3);
+  }
+  // Remove all non-numeric characters (since we want integer values)
+  const clean = str.replace(/[^0-9]/g, '');
+  return Number(clean) || 0;
+};
+
 export function MarketingPage({ activityType }) {
   const { showSuccess, showError } = useToast();
   const confirm = useConfirm();
@@ -84,6 +98,9 @@ export function MarketingPage({ activityType }) {
   const [fEndDate, setFEndDate] = useState('');
   const [fStatus, setFStatus] = useState('Active');
   const [fOwnerId, setFOwnerId] = useState('');
+  const [fAdsName, setFAdsName] = useState('');
+  const [fTargeting, setFTargeting] = useState('');
+  const [fResultType, setFResultType] = useState('Leads');
 
   // Performance Entry Form fields
   const [fpDate, setFpDate] = useState(getLocalDateString);
@@ -235,6 +252,9 @@ export function MarketingPage({ activityType }) {
     setFEndDate(getLocalDateString(end));
     setFStatus('Active');
     setFOwnerId('');
+    setFAdsName('');
+    setFTargeting('');
+    setFResultType('Leads');
     setIsActModalOpen(true);
   };
 
@@ -250,6 +270,9 @@ export function MarketingPage({ activityType }) {
     setFEndDate(act.end_date || '');
     setFStatus(act.status || 'Active');
     setFOwnerId(act.owner_id || '');
+    setFAdsName(act.ads_name || '');
+    setFTargeting(act.targeting || '');
+    setFResultType(act.result_type || 'Leads');
     setIsActModalOpen(true);
   };
 
@@ -276,7 +299,10 @@ export function MarketingPage({ activityType }) {
       project_id: fProjectId || null,
       activity_type: activityType,
       channel: fChannel,
-      budget: Number(fBudget || 0),
+      budget: sanitizeMoneyToNumber(fBudget),
+      ads_name: fAdsName || null,
+      targeting: fTargeting || null,
+      result_type: fResultType || 'Leads',
       start_date: fStartDate,
       end_date: fEndDate,
       status: fStatus,
@@ -363,11 +389,11 @@ export function MarketingPage({ activityType }) {
     const payload = {
       activity_id: selectedActivity.id,
       metric_date: fpDate,
-      spend: Number(fpSpend || 0),
-      reach: Number(fpReach || 0),
-      impressions: Number(fpImpressions || 0),
-      clicks: Number(fpClicks || 0),
-      results: Number(fpResults || 0),
+      spend: sanitizeMoneyToNumber(fpSpend),
+      reach: sanitizeMoneyToNumber(fpReach),
+      impressions: sanitizeMoneyToNumber(fpImpressions),
+      clicks: sanitizeMoneyToNumber(fpClicks),
+      results: sanitizeMoneyToNumber(fpResults),
       notes: fpNotes || 'Operational entry update.'
     };
 
@@ -652,7 +678,9 @@ export function MarketingPage({ activityType }) {
                         <span className="font-extrabold text-[#141414]">{formatMoney(stats.spend)}</span>
                       </div>
                       <div>
-                        <span className="text-slate-400 text-[8px] uppercase block mb-1">Results (Leads)</span>
+                        <span className="text-slate-400 text-[8px] uppercase block mb-1 truncate" title={`Results (${act.result_type || 'Leads'})`}>
+                          Results ({act.result_type || 'Leads'})
+                        </span>
                         <span className="font-bold text-slate-700">{stats.results}</span>
                       </div>
                     </div>
@@ -709,6 +737,16 @@ export function MarketingPage({ activityType }) {
                 <h2 className="text-lg font-extrabold text-[#141414] uppercase tracking-wide">
                   {selectedActivity.title}
                 </h2>
+                {selectedActivity.ads_name && (
+                  <p className="text-[10px] text-slate-600 font-mono">
+                    <b>Ads Variant:</b> {selectedActivity.ads_name}
+                  </p>
+                )}
+                {selectedActivity.targeting && (
+                  <p className="text-[10px] text-slate-500 font-mono whitespace-pre-wrap mt-0.5 leading-tight">
+                    <b>Targeting:</b> {selectedActivity.targeting}
+                  </p>
+                )}
               </div>
 
               <div className="text-right">
@@ -778,7 +816,9 @@ export function MarketingPage({ activityType }) {
                       <tr>
                         {COLUMNS.map(col => (
                           <th key={col} className="p-2 border border-slate-700 text-center">
-                            {col}
+                            {col === 'Results' && selectedActivity?.result_type
+                              ? `Results (${selectedActivity.result_type})`
+                              : col}
                           </th>
                         ))}
                       </tr>
@@ -873,7 +913,9 @@ export function MarketingPage({ activityType }) {
                           <strong className="text-xs text-slate-800">{formatMoney(week.spend)}</strong>
                         </div>
                         <div>
-                          <span className="text-slate-400 text-[8px] block">Sum Results</span>
+                          <span className="text-slate-400 text-[8px] block truncate" title={`Sum Results (${selectedActivity.result_type || 'Leads'})`}>
+                            Sum Results ({selectedActivity.result_type || 'Leads'})
+                          </span>
                           <strong className="text-xs text-slate-800">{week.results}</strong>
                         </div>
                       </div>
@@ -977,13 +1019,48 @@ export function MarketingPage({ activityType }) {
                 <div>
                   <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Assigned Budget (IDR)</label>
                   <input
-                    type="number"
-                    placeholder="e.g. 45000000"
+                    type="text"
+                    placeholder="e.g. 45.000.000"
                     value={fBudget}
                     onChange={(e) => setFBudget(e.target.value)}
                     className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Ads Variant / Ads Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. May-InvitationInterview-HNZ-WA-Interaksi"
+                    value={fAdsName}
+                    onChange={(e) => setFAdsName(e.target.value)}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none placeholder:text-slate-400 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Result Type</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Messaging conversations started"
+                    value={fResultType}
+                    onChange={(e) => setFResultType(e.target.value)}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none placeholder:text-slate-400 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Targeting Details</label>
+                <textarea
+                  placeholder="e.g. Lokasi: Bandung, Gender: Pria/Wanita, Umur: 22-35, Interest: Broad"
+                  value={fTargeting}
+                  onChange={(e) => setFTargeting(e.target.value)}
+                  rows={2}
+                  className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none placeholder:text-slate-400 font-mono text-[10px]"
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -1097,11 +1174,11 @@ export function MarketingPage({ activityType }) {
                 <div>
                   <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Cost Spend (IDR)</label>
                   <input
-                    type="number"
-                    placeholder="e.g. 1500000"
+                    type="text"
+                    placeholder="e.g. 1.500.000"
                     value={fpSpend}
                     onChange={(e) => setFpSpend(e.target.value)}
-                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none"
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
                   />
                 </div>
               </div>
@@ -1110,46 +1187,46 @@ export function MarketingPage({ activityType }) {
                 <div>
                   <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Reach</label>
                   <input
-                    type="number"
-                    placeholder="25000"
+                    type="text"
+                    placeholder="25.000"
                     value={fpReach}
                     onChange={(e) => setFpReach(e.target.value)}
-                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none"
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
                   />
                 </div>
 
                 <div>
                   <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Impressions</label>
                   <input
-                    type="number"
-                    placeholder="32000"
+                    type="text"
+                    placeholder="32.000"
                     value={fpImpressions}
                     onChange={(e) => setFpImpressions(e.target.value)}
-                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none"
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
                   />
                 </div>
 
                 <div>
                   <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Clicks</label>
                   <input
-                    type="number"
+                    type="text"
                     placeholder="960"
                     value={fpClicks}
                     onChange={(e) => setFpClicks(e.target.value)}
-                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none"
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3">
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Results (Leads)</label>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Results ({selectedActivity?.result_type || 'Leads'})</label>
                   <input
-                    type="number"
+                    type="text"
                     placeholder="48"
                     value={fpResults}
                     onChange={(e) => setFpResults(e.target.value)}
-                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none"
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
                   />
                 </div>
               </div>

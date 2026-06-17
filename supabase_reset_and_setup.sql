@@ -161,6 +161,9 @@ CREATE TABLE public.marketing_activities (
   end_date      date        NOT NULL,
   channel       text        NOT NULL, -- 'Meta Ads', 'TikTok Ads', 'Google Ads', dst.
   budget        numeric     NOT NULL DEFAULT 0 CHECK (budget >= 0),
+  ads_name      text,
+  targeting     text,
+  result_type   text        NOT NULL DEFAULT 'Leads',
   created_at    timestamptz NOT NULL DEFAULT timezone('utc', now()),
   updated_at    timestamptz NOT NULL DEFAULT timezone('utc', now()),
   deleted_at    timestamptz DEFAULT NULL,

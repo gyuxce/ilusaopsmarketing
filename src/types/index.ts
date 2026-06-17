@@ -89,6 +89,9 @@ export interface MarketingActivity {
   end_date: string;
   channel: string;
   budget: number;
+  ads_name?: string | null;
+  targeting?: string | null;
+  result_type?: string;
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
