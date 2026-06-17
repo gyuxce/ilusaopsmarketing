@@ -33,6 +33,38 @@ export function AttendanceLogsPage({ attendanceVersion = 0 }) {
     return name.toLowerCase().includes(q) || email.toLowerCase().includes(q);
   });
 
+  // Calculate team attendance recap from all logs
+  const userRecap = {};
+  logs.forEach(log => {
+    const userId = log.user_id;
+    const email = log.users?.email || '-';
+    const name = log.users?.name || 'Unknown User';
+    const role = log.users?.role || '-';
+    const department = log.users?.department || '-';
+    
+    const key = userId || email;
+    if (!userRecap[key]) {
+      userRecap[key] = {
+        name,
+        email,
+        role,
+        department,
+        count: 0,
+        lastClockIn: null,
+      };
+    }
+    userRecap[key].count += 1;
+    
+    if (log.clock_in_time) {
+      const logTime = new Date(log.clock_in_time);
+      if (!userRecap[key].lastClockIn || logTime > new Date(userRecap[key].lastClockIn)) {
+        userRecap[key].lastClockIn = log.clock_in_time;
+      }
+    }
+  });
+
+  const recapList = Object.values(userRecap).sort((a, b) => b.count - a.count);
+
   return (
     <div className="space-y-6">
       {/* HEADER SECTION */}
@@ -55,6 +87,56 @@ export function AttendanceLogsPage({ attendanceVersion = 0 }) {
           <span>Refresh Data</span>
         </button>
       </div>
+
+      {/* TEAM RECAP SECTION */}
+      {!loading && recapList.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 bg-orange-600 block"></span>
+            <h2 className="text-xs font-bold font-mono text-[#141414] uppercase tracking-wider">
+              Team Attendance Summary
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {recapList.map((recap) => (
+              <div 
+                key={recap.email} 
+                className="bg-white border border-[#141414]/15 p-4 flex flex-col justify-between hover:border-[#141414] transition-all"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-extrabold text-[11px] text-[#141414] uppercase tracking-wider truncate font-sans" title={recap.name}>
+                      {recap.name}
+                    </h3>
+                    <span className="text-[8px] font-mono px-1 py-0.5 bg-slate-100 border border-slate-200 text-slate-500 font-bold uppercase shrink-0">
+                      {recap.role}
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-slate-400 font-mono lowercase truncate mt-0.5">
+                    {recap.email}
+                  </div>
+                  <div className="flex items-baseline gap-1 mt-3">
+                    <span className="text-2xl font-black text-orange-600 font-mono leading-none">
+                      {recap.count}
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-400 uppercase font-bold">
+                      x Clock-In
+                    </span>
+                  </div>
+                </div>
+                <div className="text-[8px] text-slate-400 font-mono mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span>Last Active:</span>
+                  <span className="text-slate-600 font-bold uppercase">
+                    {recap.lastClockIn 
+                      ? new Date(recap.lastClockIn).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+                      : '-'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* SEARCH SECTION */}
       <div className="bg-white border border-[#141414]/15 p-4">
