@@ -60,13 +60,17 @@ CREATE TRIGGER tr_users_updated_at
 -- Trigger: otomatis buat profil di public.users saat user mendaftar via Supabase Auth
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
+DECLARE
+  is_first_user boolean;
 BEGIN
+  SELECT NOT EXISTS (SELECT 1 FROM public.users) INTO is_first_user;
+
   INSERT INTO public.users (id, name, email, role, department, status)
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
     new.email,
-    'Staff',
+    CASE WHEN is_first_user THEN 'Admin' ELSE 'Staff' END,
     'Ops',
     'Active'
   )
