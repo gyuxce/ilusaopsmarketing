@@ -50,8 +50,8 @@ export function WorkPage() {
   const filtered = allItems.filter(item => {
     const matchClient = clientFilter === 'All' || item.client_id === clientFilter;
     const matchAssignee = assigneeFilter === 'All' ||
-      ('assignee_id' in item && item.assignee_id === assigneeFilter) ||
-      ('owner_id' in item && item.owner_id === assigneeFilter);
+      item.assignee_id === assigneeFilter ||
+      item.owner_id === assigneeFilter;
     return matchClient && matchAssignee;
   });
 
@@ -199,11 +199,21 @@ export function WorkPage() {
                                 <span>Due: <b>{itemAny.due_date || itemAny.end_date}</b></span>
                               </div>
                             )}
-                            {userMap[itemAny.assignee_id ?? ''] && (
+                            {/* PIC / Owner */}
+                            {userMap[itemAny.owner_id ?? ''] && (
                               <div className="flex items-center gap-1.5 text-slate-500">
                                 <User className="h-3 w-3 text-orange-600 shrink-0" />
                                 <span className="whitespace-normal break-words">
-                                  PIC: <strong>{userMap[itemAny.assignee_id ?? '']}</strong>
+                                  PIC: <strong>{userMap[itemAny.owner_id ?? '']}</strong>
+                                </span>
+                              </div>
+                            )}
+                            {/* Assignee */}
+                            {itemAny._itemType === 'Project' && itemAny.assignee_id && itemAny.assignee_id !== itemAny.owner_id && userMap[itemAny.assignee_id] && (
+                              <div className="flex items-center gap-1.5 text-slate-500">
+                                <User className="h-3 w-3 text-blue-600 shrink-0" />
+                                <span className="whitespace-normal break-words">
+                                  Assignee: <strong>{userMap[itemAny.assignee_id]}</strong>
                                 </span>
                               </div>
                             )}
