@@ -16,12 +16,17 @@ import { clientService } from '../services/clientService';
 import { projectService } from '../services/projectService';
 import { attendanceService } from '../services/attendanceService';
 import { reviewService } from '../services/reviewService';
-import { formatMoney, formatDate } from '../utils/formatters';
+import { formatMoney, formatDate, getLocalDateString } from '../utils/formatters';
+
+const getFirstOfMonthString = () => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+};
 
 export function ReportsPage() {
   const [reportType, setReportType] = useState('attendance');
-  const [startDate, setStartDate] = useState('2026-06-01');
-  const [endDate, setEndDate] = useState('2026-06-15');
+  const [startDate, setStartDate] = useState(getFirstOfMonthString());
+  const [endDate, setEndDate] = useState(getLocalDateString());
   const [loading, setLoading] = useState(false);
 
   // Data States

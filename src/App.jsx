@@ -113,29 +113,20 @@ export default function App() {
 
   // Realtime Changes Listener
   useEffect(() => {
-    let activeChannel = null;
+    if (!supabase || !session) return;
 
-    const setupChannel = async () => {
-      if (!supabase) return;
-      activeChannel = supabase
-        .channel('dashboard-marketing-realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'work_items' }, () => {
-          setNewUpdateAvailable(true);
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'marketing_activities' }, () => {
-          setNewUpdateAvailable(true);
-        })
-        .subscribe();
-    };
-
-    setupChannel();
+    const activeChannel = supabase
+      .channel('dashboard-marketing-realtime-sync')
+      .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+        console.log('[Realtime Sync] Database changed, invalidating cached queries...', payload);
+        queryClient.invalidateQueries();
+      })
+      .subscribe();
 
     return () => {
-      if (activeChannel) {
-        supabase.removeChannel(activeChannel);
-      }
+      supabase.removeChannel(activeChannel);
     };
-  }, []);
+  }, [session, queryClient]);
 
   const handleSearchChange = async (query) => {
     setSearchQuery(query);

@@ -101,20 +101,78 @@ ON public.users FOR ALL TO authenticated
 USING (public.check_user_is_admin_or_manager())
 WITH CHECK (public.check_user_is_admin_or_manager());
 
-CREATE POLICY "Authenticated users manage clients"
-ON public.clients FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Authenticated users manage projects"
-ON public.projects FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Authenticated users manage project members"
-ON public.project_members FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Authenticated users manage marketing activities"
-ON public.marketing_activities FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Authenticated users manage work items"
-ON public.work_items FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Authenticated users manage performance entries"
-ON public.performance_entries FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Authenticated users manage weekly reviews"
-ON public.weekly_reviews FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Select clients policy" ON public.clients FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR contact_email = auth.jwt() ->> 'email'
+  );
+CREATE POLICY "Insert clients policy" ON public.clients FOR INSERT TO authenticated
+  WITH CHECK (check_user_is_admin_or_manager());
+CREATE POLICY "Update clients policy" ON public.clients FOR UPDATE TO authenticated
+  USING (check_user_is_admin_or_manager())
+  WITH CHECK (check_user_is_admin_or_manager());
+CREATE POLICY "Delete clients policy" ON public.clients FOR DELETE TO authenticated
+  USING (check_user_is_admin_or_manager());
+
+CREATE POLICY "Select projects policy" ON public.projects FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR client_id IN (SELECT id FROM public.clients WHERE contact_email = auth.jwt() ->> 'email')
+  );
+CREATE POLICY "Manage projects policy" ON public.projects FOR ALL TO authenticated
+  USING (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'))
+  WITH CHECK (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'));
+
+CREATE POLICY "Select project_members policy" ON public.project_members FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR project_id IN (
+      SELECT id FROM public.projects 
+      WHERE client_id IN (SELECT id FROM public.clients WHERE contact_email = auth.jwt() ->> 'email')
+    )
+  );
+CREATE POLICY "Manage project_members policy" ON public.project_members FOR ALL TO authenticated
+  USING (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'))
+  WITH CHECK (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'));
+
+CREATE POLICY "Select marketing_activities policy" ON public.marketing_activities FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR client_id IN (SELECT id FROM public.clients WHERE contact_email = auth.jwt() ->> 'email')
+  );
+CREATE POLICY "Manage marketing_activities policy" ON public.marketing_activities FOR ALL TO authenticated
+  USING (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'))
+  WITH CHECK (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'));
+
+CREATE POLICY "Select work_items policy" ON public.work_items FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR client_id IN (SELECT id FROM public.clients WHERE contact_email = auth.jwt() ->> 'email')
+  );
+CREATE POLICY "Manage work_items policy" ON public.work_items FOR ALL TO authenticated
+  USING (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'))
+  WITH CHECK (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'));
+
+CREATE POLICY "Select performance_entries policy" ON public.performance_entries FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR activity_id IN (
+      SELECT id FROM public.marketing_activities 
+      WHERE client_id IN (SELECT id FROM public.clients WHERE contact_email = auth.jwt() ->> 'email')
+    )
+  );
+CREATE POLICY "Manage performance_entries policy" ON public.performance_entries FOR ALL TO authenticated
+  USING (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'))
+  WITH CHECK (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'));
+
+CREATE POLICY "Select weekly_reviews policy" ON public.weekly_reviews FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR client_id IN (SELECT id FROM public.clients WHERE contact_email = auth.jwt() ->> 'email')
+  );
+CREATE POLICY "Manage weekly_reviews policy" ON public.weekly_reviews FOR ALL TO authenticated
+  USING (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'))
+  WITH CHECK (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'));
 
 CREATE POLICY "Users read own attendance or managers read all"
 ON public.attendance_logs FOR SELECT TO authenticated

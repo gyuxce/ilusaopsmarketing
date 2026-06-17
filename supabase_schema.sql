@@ -357,29 +357,102 @@ CREATE POLICY "Admin manager can manage all users"
   WITH CHECK (public.check_user_is_admin_or_manager());
 
 -- ---- Policies: tabel operasional (clients, projects, dst.) ----
--- Semua user yang sudah login bisa baca dan tulis.
--- Tightening lebih lanjut bisa dilakukan per role jika perlu.
+-- Hanya Admin dan Manager yang bisa insert, update, atau delete client list.
+-- Staff dan Client hanya bisa select (Client dibatasi client_id miliknya).
 
-CREATE POLICY "Authenticated manage clients"
-  ON public.clients FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Select clients policy" ON public.clients FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR contact_email = auth.jwt() ->> 'email'
+  );
 
-CREATE POLICY "Authenticated manage projects"
-  ON public.projects FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Insert clients policy" ON public.clients FOR INSERT TO authenticated
+  WITH CHECK (check_user_is_admin_or_manager());
 
-CREATE POLICY "Authenticated manage project_members"
-  ON public.project_members FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Update clients policy" ON public.clients FOR UPDATE TO authenticated
+  USING (check_user_is_admin_or_manager())
+  WITH CHECK (check_user_is_admin_or_manager());
 
-CREATE POLICY "Authenticated manage marketing_activities"
-  ON public.marketing_activities FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Delete clients policy" ON public.clients FOR DELETE TO authenticated
+  USING (check_user_is_admin_or_manager());
 
-CREATE POLICY "Authenticated manage work_items"
-  ON public.work_items FOR ALL TO authenticated USING (true) WITH CHECK (true);
+-- Projects: Staff, Manager, Admin bisa kelola. Client hanya bisa select project miliknya.
 
-CREATE POLICY "Authenticated manage performance_entries"
-  ON public.performance_entries FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Select projects policy" ON public.projects FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR client_id IN (SELECT id FROM public.clients WHERE contact_email = auth.jwt() ->> 'email')
+  );
 
-CREATE POLICY "Authenticated manage weekly_reviews"
-  ON public.weekly_reviews FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Manage projects policy" ON public.projects FOR ALL TO authenticated
+  USING (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'))
+  WITH CHECK (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'));
+
+-- Project Members: Staff, Manager, Admin bisa kelola. Client bisa select member di project miliknya.
+
+CREATE POLICY "Select project_members policy" ON public.project_members FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR project_id IN (
+      SELECT id FROM public.projects 
+      WHERE client_id IN (SELECT id FROM public.clients WHERE contact_email = auth.jwt() ->> 'email')
+    )
+  );
+
+CREATE POLICY "Manage project_members policy" ON public.project_members FOR ALL TO authenticated
+  USING (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'))
+  WITH CHECK (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'));
+
+-- Marketing Activities: Staff, Manager, Admin bisa kelola. Client hanya bisa select activity miliknya.
+
+CREATE POLICY "Select marketing_activities policy" ON public.marketing_activities FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR client_id IN (SELECT id FROM public.clients WHERE contact_email = auth.jwt() ->> 'email')
+  );
+
+CREATE POLICY "Manage marketing_activities policy" ON public.marketing_activities FOR ALL TO authenticated
+  USING (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'))
+  WITH CHECK (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'));
+
+-- Work Items: Staff, Manager, Admin bisa kelola. Client hanya bisa select work_items miliknya.
+
+CREATE POLICY "Select work_items policy" ON public.work_items FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR client_id IN (SELECT id FROM public.clients WHERE contact_email = auth.jwt() ->> 'email')
+  );
+
+CREATE POLICY "Manage work_items policy" ON public.work_items FOR ALL TO authenticated
+  USING (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'))
+  WITH CHECK (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'));
+
+-- Performance Entries: Staff, Manager, Admin bisa kelola. Client hanya bisa select log activity miliknya.
+
+CREATE POLICY "Select performance_entries policy" ON public.performance_entries FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR activity_id IN (
+      SELECT id FROM public.marketing_activities 
+      WHERE client_id IN (SELECT id FROM public.clients WHERE contact_email = auth.jwt() ->> 'email')
+    )
+  );
+
+CREATE POLICY "Manage performance_entries policy" ON public.performance_entries FOR ALL TO authenticated
+  USING (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'))
+  WITH CHECK (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'));
+
+-- Weekly Reviews: Staff, Manager, Admin bisa kelola. Client hanya bisa select review miliknya.
+
+CREATE POLICY "Select weekly_reviews policy" ON public.weekly_reviews FOR SELECT TO authenticated
+  USING (
+    get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff')
+    OR client_id IN (SELECT id FROM public.clients WHERE contact_email = auth.jwt() ->> 'email')
+  );
+
+CREATE POLICY "Manage weekly_reviews policy" ON public.weekly_reviews FOR ALL TO authenticated
+  USING (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'))
+  WITH CHECK (get_user_role(auth.uid()) IN ('Admin', 'Manager', 'Staff'));
 
 -- ---- Policies: attendance_logs (lebih ketat) ----
 

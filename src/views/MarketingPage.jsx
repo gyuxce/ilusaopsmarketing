@@ -57,6 +57,139 @@ const sanitizeMoneyToNumber = (val) => {
   return Number(clean) || 0;
 };
 
+const parseIndonesianDate = (dateStr) => {
+  if (!dateStr) return null;
+  const str = String(dateStr).trim().toLowerCase();
+  
+  const indonesianMonths = {
+    januari: 0, jan: 0,
+    februari: 1, feb: 1,
+    maret: 2, mar: 2,
+    april: 3, apr: 3,
+    mei: 4,
+    juni: 5, jun: 5,
+    juli: 6, jul: 6,
+    agustus: 7, agu: 7, ags: 7,
+    september: 8, sep: 8,
+    oktober: 9, okt: 9,
+    november: 10, nov: 10,
+    desember: 11, des: 11
+  };
+  
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
+  }
+
+  const parts = str.split(/[\s\-/,]+/);
+  if (parts.length === 3) {
+    let day = NaN;
+    let month = NaN;
+    let year = NaN;
+
+    if (indonesianMonths[parts[1]] !== undefined) {
+      month = indonesianMonths[parts[1]];
+      day = parseInt(parts[0], 10);
+      year = parseInt(parts[2], 10);
+    } else if (indonesianMonths[parts[0]] !== undefined) {
+      month = indonesianMonths[parts[0]];
+      day = parseInt(parts[1], 10);
+      year = parseInt(parts[2], 10);
+    } else {
+      const p0 = parseInt(parts[0], 10);
+      const p1 = parseInt(parts[1], 10);
+      const p2 = parseInt(parts[2], 10);
+      if (p2 > 999) {
+        day = p0;
+        month = p1 - 1;
+        year = p2;
+      } else if (p0 > 999) {
+        year = p0;
+        month = p1 - 1;
+        day = p2;
+      }
+    }
+
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      const date = new Date(year, month, day);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+  }
+
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  
+  return null;
+};
+
+const parseCSVText = (text) => {
+  if (!text) return { headers: [], rows: [] };
+  const lines = text.split(/\r?\n/);
+  if (lines.length === 0 || !lines[0].trim()) return { headers: [], rows: [] };
+  
+  const firstLine = lines[0];
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  const semicolonCount = (firstLine.match(/;/g) || []).length;
+  const delimiter = semicolonCount > commaCount ? ';' : ',';
+
+  const parseRow = (rowText) => {
+    const fields = [];
+    let field = '';
+    let inQuotes = false;
+    for (let i = 0; i < rowText.length; i++) {
+      const char = rowText[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === delimiter && !inQuotes) {
+        fields.push(field.trim());
+        field = '';
+      } else {
+        field += char;
+      }
+    }
+    fields.push(field.trim());
+    return fields.map(f => {
+      if (f.startsWith('"') && f.endsWith('"')) {
+        return f.slice(1, -1).trim();
+      }
+      return f;
+    });
+  };
+
+  const headers = parseRow(lines[0]);
+  const rows = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const values = parseRow(lines[i]);
+    const row = {};
+    headers.forEach((header, index) => {
+      row[header] = values[index] !== undefined ? values[index] : '';
+    });
+    rows.push(row);
+  }
+
+  return { headers, rows };
+};
+
+const getCSVFieldValue = (row, possibleNames) => {
+  const keys = Object.keys(row);
+  for (const name of possibleNames) {
+    const matchedKey = keys.find(k => k.trim().toLowerCase() === name.toLowerCase());
+    if (matchedKey !== undefined) {
+      return row[matchedKey];
+    }
+  }
+  return '';
+};
+
 export function MarketingPage({ activityType }) {
   const { showSuccess, showError } = useToast();
   const confirm = useConfirm();
@@ -83,6 +216,10 @@ export function MarketingPage({ activityType }) {
   // Modal forms states
   const [isActModalOpen, setIsActModalOpen] = useState(false);
   const [isPerfModalOpen, setIsPerfModalOpen] = useState(false);
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState(null);
+  const [csvError, setCsvError] = useState(null);
+  const [csvImporting, setCsvImporting] = useState(false);
 
   // Edit states references
   const [editingActivity, setEditingActivity] = useState(null);
@@ -436,6 +573,165 @@ export function MarketingPage({ activityType }) {
     }
   };
 
+  const handleCsvImport = async (e) => {
+    e.preventDefault();
+    if (!csvFile || !selectedActivity) {
+      setCsvError("No file or campaign selected.");
+      return;
+    }
+
+    setCsvImporting(true);
+    setCsvError(null);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target.result;
+        const { rows } = parseCSVText(text);
+
+        if (rows.length === 0) {
+          throw new Error("CSV file is empty or invalid.");
+        }
+
+        const defaultClientId = selectedActivity.client_id;
+        const defaultProjectId = selectedActivity.project_id;
+        const defaultChannel = selectedActivity.channel || "Meta Ads";
+        const defaultOwnerId = selectedActivity.owner_id;
+
+        const allActs = await activityService.getAll(activityType);
+
+        const campaignsMap = {};
+        rows.forEach(row => {
+          const rawCampName = getCSVFieldValue(row, ['Campaign name', 'Campaign', 'Nama Kampanye', 'Nama Campaign']);
+          const campaignName = rawCampName ? rawCampName.trim() : '';
+          if (!campaignName) return;
+
+          if (!campaignsMap[campaignName]) {
+            campaignsMap[campaignName] = [];
+          }
+          campaignsMap[campaignName].push(row);
+        });
+
+        const campaignNames = Object.keys(campaignsMap);
+        if (campaignNames.length === 0) {
+          throw new Error("No valid campaign names found in CSV. Please verify column headers.");
+        }
+
+        const activityIdMap = {};
+
+        for (const name of campaignNames) {
+          const matchedAct = allActs.find(act => act.title.trim().toLowerCase() === name.toLowerCase());
+          
+          if (matchedAct) {
+            activityIdMap[name] = matchedAct.id;
+          } else {
+            const rowsForCamp = campaignsMap[name];
+            const firstRow = rowsForCamp[0];
+            const adsName = getCSVFieldValue(firstRow, ['Ads', 'Ads name', 'Ad name', 'Varian Iklan', 'Varian', 'Nama Iklan']) || null;
+            const targeting = getCSVFieldValue(firstRow, ['Targeting', 'Targeting details', 'Target']) || null;
+            const resultType = getCSVFieldValue(firstRow, ['Result type', 'Result name', 'Tipe Hasil']) || 'Leads';
+
+            let minDateStr = null;
+            let maxDateStr = null;
+            rowsForCamp.forEach(r => {
+              const dStr = getCSVFieldValue(r, ['Start running', 'Start date', 'Tanggal Mulai', 'Mulai', 'Date', 'Metric Date', 'Tanggal']);
+              const parsedDate = parseIndonesianDate(dStr);
+              if (parsedDate) {
+                if (!minDateStr || parsedDate < minDateStr) minDateStr = parsedDate;
+                if (!maxDateStr || parsedDate > maxDateStr) maxDateStr = parsedDate;
+              }
+            });
+
+            const startDate = minDateStr || getLocalDateString();
+            const endDate = maxDateStr || getLocalDateString();
+
+            const totalSpend = rowsForCamp.reduce((sum, r) => {
+              const spVal = getCSVFieldValue(r, ['Amount spent (IDR)', 'Amount spent', 'Spend', 'Biaya', 'Pengeluaran', 'Budget Spent', 'Spent']);
+              return sum + sanitizeMoneyToNumber(spVal);
+            }, 0);
+
+            const newActPayload = {
+              title: name,
+              client_id: defaultClientId,
+              project_id: defaultProjectId,
+              activity_type: activityType,
+              channel: defaultChannel,
+              budget: totalSpend || 1000000,
+              ads_name: adsName,
+              targeting: targeting,
+              result_type: resultType,
+              start_date: startDate,
+              end_date: endDate,
+              status: 'Active',
+              owner_id: defaultOwnerId
+            };
+
+            const created = await activityService.create(newActPayload);
+            activityIdMap[name] = created.id;
+          }
+        }
+
+        const perfEntriesToUpsert = [];
+        campaignNames.forEach(name => {
+          const actId = activityIdMap[name];
+          const rowsForCamp = campaignsMap[name];
+
+          rowsForCamp.forEach(row => {
+            const rawDate = getCSVFieldValue(row, ['Start running', 'Start date', 'Tanggal Mulai', 'Mulai', 'Date', 'Metric Date', 'Tanggal']);
+            const parsedDate = parseIndonesianDate(rawDate);
+            if (!parsedDate) return;
+
+            const spend = sanitizeMoneyToNumber(getCSVFieldValue(row, ['Amount spent (IDR)', 'Amount spent', 'Spend', 'Biaya', 'Pengeluaran', 'Budget Spent', 'Spent']));
+            const reach = sanitizeMoneyToNumber(getCSVFieldValue(row, ['Reach', 'Jangkauan']));
+            const impressions = sanitizeMoneyToNumber(getCSVFieldValue(row, ['Impressions', 'Impresi']));
+            const clicks = sanitizeMoneyToNumber(getCSVFieldValue(row, ['Clicks', 'Klik']));
+            const results = sanitizeMoneyToNumber(getCSVFieldValue(row, ['Results', 'Hasil', 'Leads', 'Conversions']));
+            const notes = getCSVFieldValue(row, ['Notes', 'Keterangan', 'Annotation']) || 'Imported via CSV.';
+
+            perfEntriesToUpsert.push({
+              activity_id: actId,
+              metric_date: parsedDate,
+              spend,
+              reach,
+              impressions,
+              clicks,
+              results,
+              revenue: 0,
+              notes
+            });
+          });
+        });
+
+        if (perfEntriesToUpsert.length === 0) {
+          throw new Error("No performance records found with valid dates.");
+        }
+
+        await performanceService.upsertMany(perfEntriesToUpsert);
+
+        await loadActivities();
+        if (selectedActivity) {
+          await loadPerformanceRecords(selectedActivity.id);
+        }
+
+        triggerFeedback(`Successfully imported ${campaignNames.length} campaigns and ${perfEntriesToUpsert.length} logs.`);
+        setIsCsvModalOpen(false);
+        setCsvFile(null);
+      } catch (err) {
+        console.error("CSV Import Error: ", err);
+        setCsvError(err.message || "An unexpected error occurred during CSV import.");
+      } finally {
+        setCsvImporting(false);
+      }
+    };
+
+    reader.onerror = () => {
+      setCsvError("Error reading the file.");
+      setCsvImporting(false);
+    };
+
+    reader.readAsText(csvFile);
+  };
+
 
   // -------------------- COMPUTATIONS AND METRIC CALCULATIONS --------------------
 
@@ -784,6 +1080,194 @@ export function MarketingPage({ activityType }) {
               </div>
             </div>
 
+            {/* SVG TRENDS CHART */}
+            {performanceEntries.length > 1 && (
+              <div className="bg-slate-50 border border-[#141414]/15 p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-[#141414] flex items-center gap-1.5">
+                    <TrendingUp className="h-4 w-4 text-orange-600" />
+                    <span>Performance Trend Chart</span>
+                  </h3>
+                  <div className="flex items-center gap-4 text-[9px] font-mono uppercase text-slate-500">
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-block w-2.5 h-0.5 bg-orange-600"></span>
+                      <span>Spend (IDR)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-block w-2.5 h-0.5 bg-blue-600"></span>
+                      <span>Results ({selectedActivity.result_type || 'Leads'})</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-full">
+                  {(() => {
+                    const sortedEntries = [...performanceEntries].sort((a, b) => a.metric_date.localeCompare(b.metric_date));
+                    const width = 600;
+                    const height = 180;
+                    const paddingLeft = 50;
+                    const paddingRight = 40;
+                    const paddingTop = 20;
+                    const paddingBottom = 30;
+
+                    const graphWidth = width - paddingLeft - paddingRight;
+                    const graphHeight = height - paddingTop - paddingBottom;
+
+                    const maxSpend = Math.max(...sortedEntries.map(e => Number(e.spend || 0)), 1);
+                    const maxResults = Math.max(...sortedEntries.map(e => Number(e.results || 0)), 1);
+
+                    const points = sortedEntries.map((e, idx) => {
+                      const x = paddingLeft + (idx / (sortedEntries.length - 1)) * graphWidth;
+                      const ySpend = height - paddingBottom - (Number(e.spend || 0) / maxSpend) * graphHeight;
+                      const yResults = height - paddingBottom - (Number(e.results || 0) / maxResults) * graphHeight;
+                      return { x, ySpend, yResults, date: e.metric_date, spend: e.spend, results: e.results };
+                    });
+
+                    const spendPath = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.ySpend}`).join(' ');
+                    const resultsPath = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.yResults}`).join(' ');
+
+                    const spendAreaPath = points.length > 0 
+                      ? `${spendPath} L ${points[points.length - 1].x} ${height - paddingBottom} L ${points[0].x} ${height - paddingBottom} Z` 
+                      : '';
+
+                    const gridCount = 4;
+                    const horizontalGrid = Array.from({ length: gridCount }).map((_, idx) => {
+                      const y = paddingTop + (idx / (gridCount - 1)) * graphHeight;
+                      const spendVal = maxSpend - (idx / (gridCount - 1)) * maxSpend;
+                      const resultsVal = maxResults - (idx / (gridCount - 1)) * maxResults;
+                      return { y, spendVal, resultsVal };
+                    });
+
+                    return (
+                      <div className="relative">
+                        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible select-none">
+                          <defs>
+                            <linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#ea580c" stopOpacity="0.15" />
+                              <stop offset="100%" stopColor="#ea580c" stopOpacity="0.0" />
+                            </linearGradient>
+                          </defs>
+
+                          {horizontalGrid.map((g, idx) => (
+                            <g key={idx}>
+                              <line 
+                                x1={paddingLeft} 
+                                y1={g.y} 
+                                x2={width - paddingRight} 
+                                y2={g.y} 
+                                stroke="#141414" 
+                                strokeOpacity="0.08" 
+                                strokeDasharray="3,3" 
+                              />
+                              <text 
+                                x={paddingLeft - 8} 
+                                y={g.y + 3} 
+                                textAnchor="end" 
+                                fill="#64748b" 
+                                className="font-mono text-[8px]"
+                              >
+                                {g.spendVal >= 1000000 
+                                  ? `Rp ${(g.spendVal / 1000000).toFixed(1)}Jt` 
+                                  : `Rp ${(g.spendVal / 1000).toFixed(0)}rb`
+                                }
+                              </text>
+                              <text 
+                                x={width - paddingRight + 8} 
+                                y={g.y + 3} 
+                                textAnchor="start" 
+                                fill="#3b82f6" 
+                                className="font-mono text-[8px]"
+                              >
+                                {g.resultsVal.toFixed(0)}
+                              </text>
+                            </g>
+                          ))}
+
+                          {points.length > 0 && (
+                            <>
+                              <text 
+                                x={points[0].x} 
+                                y={height - paddingBottom + 16} 
+                                textAnchor="middle" 
+                                fill="#64748b" 
+                                className="font-mono text-[8px]"
+                              >
+                                {formatDate(points[0].date)}
+                              </text>
+                              
+                              {points.length > 2 && (
+                                <text 
+                                  x={points[Math.floor(points.length / 2)].x} 
+                                  y={height - paddingBottom + 16} 
+                                  textAnchor="middle" 
+                                  fill="#64748b" 
+                                  className="font-mono text-[8px]"
+                                >
+                                  {formatDate(points[Math.floor(points.length / 2)].date)}
+                                </text>
+                              )}
+
+                              <text 
+                                x={points[points.length - 1].x} 
+                                y={height - paddingBottom + 16} 
+                                textAnchor="middle" 
+                                fill="#64748b" 
+                                className="font-mono text-[8px]"
+                              >
+                                {formatDate(points[points.length - 1].date)}
+                              </text>
+                            </>
+                          )}
+
+                          {spendAreaPath && (
+                            <path d={spendAreaPath} fill="url(#spendGrad)" />
+                          )}
+
+                          <path 
+                            d={spendPath} 
+                            fill="none" 
+                            stroke="#ea580c" 
+                            strokeWidth="1.5" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                          />
+                          <path 
+                            d={resultsPath} 
+                            fill="none" 
+                            stroke="#3b82f6" 
+                            strokeWidth="1.5" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                          />
+
+                          {points.map((p, idx) => (
+                            <g key={idx}>
+                              <circle 
+                                cx={p.x} 
+                                cy={p.ySpend} 
+                                r="2.5" 
+                                fill="#ffffff" 
+                                stroke="#ea580c" 
+                                strokeWidth="1.5" 
+                              />
+                              <circle 
+                                cx={p.x} 
+                                cy={p.yResults} 
+                                r="2.5" 
+                                fill="#ffffff" 
+                                stroke="#3b82f6" 
+                                strokeWidth="1.5" 
+                              />
+                            </g>
+                          ))}
+                        </svg>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
             {/* PERFORMANCE JOURNAL ENTRIES LIST AND GRID */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -792,13 +1276,21 @@ export function MarketingPage({ activityType }) {
                   <span>Performance Logs Table</span>
                 </h3>
 
-                <button
-                  onClick={handleOpenAddPerfModal}
-                  className="flex items-center gap-1 bg-[#141414] text-white py-1.5 px-3 hover:bg-orange-600 font-mono text-[10px] font-bold uppercase transition-all cursor-pointer"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Log Entry</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsCsvModalOpen(true)}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border border-[#141414] text-[#141414] font-mono text-[10px] font-bold uppercase transition-all hover:bg-slate-50 cursor-pointer"
+                  >
+                    <span>Import CSV</span>
+                  </button>
+                  <button
+                    onClick={handleOpenAddPerfModal}
+                    className="flex items-center gap-1 bg-[#141414] text-white py-1.5 px-3 hover:bg-orange-600 font-mono text-[10px] font-bold uppercase transition-all cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Log Entry</span>
+                  </button>
+                </div>
               </div>
 
               {perfLoading ? (
@@ -1277,6 +1769,93 @@ export function MarketingPage({ activityType }) {
                   className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold uppercase"
                 >
                   Record Entry
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* -------------------- 3. MODAL: CSV IMPORT UPLOADER -------------------- */}
+      {isCsvModalOpen && (
+        <div className="fixed inset-0 z-50 bg-[#141414]/60 flex items-center justify-center p-4">
+          <div className="bg-white border border-[#141414] w-full max-w-md shadow-lg">
+            
+            {/* Heading */}
+            <div className="bg-[#141414] text-white px-5 py-4 flex items-center justify-between">
+              <h3 className="text-xs font-bold font-mono uppercase tracking-widest flex items-center gap-1.5">
+                <FileText className="h-4 w-4 text-orange-600" />
+                <span>Bulk Import via CSV</span>
+              </h3>
+              <button 
+                onClick={() => {
+                  setIsCsvModalOpen(false);
+                  setCsvFile(null);
+                  setCsvError(null);
+                }}
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleCsvImport} className="p-5 space-y-4 font-mono text-[11px]">
+              
+              <div className="bg-slate-50 border border-slate-200 p-3 text-slate-600 text-[10px] space-y-1.5 leading-relaxed">
+                <p className="font-bold text-[#141414] uppercase">Expected CSV Columns:</p>
+                <p className="text-slate-500">
+                  `Campaign name`, `Ads`, `Start running`, `Targeting`, `Amount spent (IDR)`, `Reach`, `Impressions`, `Result type`, `Results`
+                </p>
+                <p className="text-[9px] text-orange-600 font-bold">
+                  * Delimiter (comma/semicolon) is auto-detected. Indonesian dates (e.g. 11 Mei 2026) are supported!
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1.5">Select CSV File *</label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setCsvFile(file);
+                      setCsvError(null);
+                    }
+                  }}
+                  className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-slate-50 font-mono text-[10px]"
+                  required
+                />
+              </div>
+
+              {csvError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-[10px] flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+                  <div className="whitespace-pre-wrap">{csvError}</div>
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCsvModalOpen(false);
+                    setCsvFile(null);
+                    setCsvError(null);
+                  }}
+                  className="px-4 py-2 border border-slate-200 bg-slate-50 uppercase text-[#141414]"
+                  disabled={csvImporting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#141414] hover:bg-orange-600 text-white font-bold uppercase disabled:opacity-50"
+                  disabled={csvImporting || !csvFile}
+                >
+                  {csvImporting ? 'Processing...' : 'Execute Import'}
                 </button>
               </div>
 

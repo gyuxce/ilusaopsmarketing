@@ -49,4 +49,13 @@ export const performanceService = {
       .eq('id', id);
     if (error) throw error;
   },
+
+  async upsertMany(payloads: Partial<PerformanceEntry>[]): Promise<PerformanceEntry[]> {
+    const { data, error } = await supabase
+      .from('performance_entries')
+      .upsert(payloads, { onConflict: 'activity_id,metric_date' })
+      .select();
+    if (error) throw error;
+    return data ?? [];
+  },
 };
