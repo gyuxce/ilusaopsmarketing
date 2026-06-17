@@ -39,8 +39,10 @@ import { attendanceService } from './services/attendanceService';
 import { useAuth } from './hooks/useAuth';
 import { clientService } from './services/clientService';
 import { formatDate, getLocalDateString } from './utils/formatters';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function App() {
+  const queryClient = useQueryClient();
   const { session, userProfile, loading: authLoading, login, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('Home');
 
