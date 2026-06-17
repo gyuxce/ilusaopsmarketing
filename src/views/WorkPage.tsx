@@ -169,7 +169,7 @@ export function WorkPage() {
                     colItems.map(item => {
                       const itemAny = item as any;
                       return (
-                        <div key={item.id} className="bg-white border border-[#141414]/15 p-3.5 space-y-3 hover:border-[#141414]/50 transition-all">
+                        <div key={item.id} className="bg-white border border-[#141414]/15 p-2.5 space-y-2 hover:border-[#141414]/50 transition-all">
                           {/* Card meta */}
                           <div className="space-y-1">
                             {item.client_id && (
@@ -186,34 +186,32 @@ export function WorkPage() {
                           </div>
 
                           {/* Metadata */}
-                          <div className="bg-slate-50 p-2 border border-slate-100 space-y-1.5 font-mono text-[9px] uppercase">
-                            {itemAny.start_date && (
+                          <div className="bg-slate-50 p-1.5 border border-slate-100 space-y-1 font-mono text-[9px] uppercase">
+                            {(itemAny.start_date || itemAny.due_date || itemAny.end_date) && (
                               <div className="flex items-center gap-1.5 text-slate-500">
                                 <Calendar className="h-3 w-3 shrink-0 text-slate-400" />
-                                <span>Start: <b>{itemAny.start_date}</b></span>
-                              </div>
-                            )}
-                            {(itemAny.due_date || itemAny.end_date) && (
-                              <div className="flex items-center gap-1.5 text-slate-500">
-                                <Calendar className="h-3 w-3 shrink-0 text-slate-400" />
-                                <span>Due: <b>{itemAny.due_date || itemAny.end_date}</b></span>
-                              </div>
-                            )}
-                            {/* PIC / Owner */}
-                            {userMap[itemAny.owner_id ?? ''] && (
-                              <div className="flex items-center gap-1.5 text-slate-500">
-                                <User className="h-3 w-3 text-orange-600 shrink-0" />
-                                <span className="whitespace-normal break-words">
-                                  PIC: <strong>{userMap[itemAny.owner_id ?? '']}</strong>
+                                <span className="truncate">
+                                  {itemAny.start_date && (itemAny.due_date || itemAny.end_date) && itemAny.start_date !== (itemAny.due_date || itemAny.end_date) ? (
+                                    <><b>{itemAny.start_date}</b> <span className="text-slate-300">→</span> <b>{itemAny.due_date || itemAny.end_date}</b></>
+                                  ) : (
+                                    <b>{itemAny.due_date || itemAny.end_date || itemAny.start_date}</b>
+                                  )}
                                 </span>
                               </div>
                             )}
-                            {/* Assignee */}
-                            {itemAny._itemType === 'Project' && itemAny.assignee_id && itemAny.assignee_id !== itemAny.owner_id && userMap[itemAny.assignee_id] && (
+                            {(userMap[itemAny.owner_id ?? ''] || (itemAny._itemType === 'Project' && userMap[itemAny.assignee_id ?? ''])) && (
                               <div className="flex items-center gap-1.5 text-slate-500">
-                                <User className="h-3 w-3 text-blue-600 shrink-0" />
-                                <span className="whitespace-normal break-words">
-                                  Assignee: <strong>{userMap[itemAny.assignee_id]}</strong>
+                                <User className="h-3 w-3 text-orange-600 shrink-0" />
+                                <span className="truncate">
+                                  {userMap[itemAny.owner_id ?? ''] && (
+                                    <>PIC: <strong>{userMap[itemAny.owner_id ?? '']}</strong></>
+                                  )}
+                                  {itemAny._itemType === 'Project' && itemAny.assignee_id && itemAny.assignee_id !== itemAny.owner_id && userMap[itemAny.assignee_id] && (
+                                    <>
+                                      <span className="text-slate-300 mx-1">|</span>
+                                      ASG: <strong>{userMap[itemAny.assignee_id]}</strong>
+                                    </>
+                                  )}
                                 </span>
                               </div>
                             )}
@@ -225,11 +223,11 @@ export function WorkPage() {
                             if (!notes) return null;
                             return (
                               <div 
-                                className="text-[9.5px] text-slate-500 font-mono leading-relaxed normal-case border-t border-dashed border-slate-200 pt-2 cursor-help"
+                                className="text-[9px] text-slate-500 font-mono normal-case border-t border-dashed border-slate-200 pt-1.5 cursor-help flex items-start gap-1"
                                 title={notes}
                               >
-                                <span className="font-bold uppercase text-[8px] text-slate-400 block mb-0.5">Notes:</span>
-                                <p className="line-clamp-3">{notes}</p>
+                                <span className="font-bold uppercase text-[8px] text-slate-400 shrink-0">Note:</span>
+                                <p className="line-clamp-1 truncate flex-1">{notes}</p>
                               </div>
                             );
                           })()}
