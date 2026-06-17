@@ -221,7 +221,7 @@ export function ClientsPage() {
     setDescription('');
     setProjectOwnerId('');
     setProjectAssigneeId('');
-    setProjectStatus('Backlog');
+    setProjectStatus('To Do');
     setIsProjectModalOpen(true);
   };
 
@@ -236,7 +236,7 @@ export function ClientsPage() {
     setDescription(proj.description || '');
     setProjectOwnerId(proj.owner_id || '');
     setProjectAssigneeId(proj.assignee_id || '');
-    setProjectStatus(proj.status || 'Backlog');
+    setProjectStatus(proj.status || 'To Do');
     setIsProjectModalOpen(true);
   };
 
@@ -1070,11 +1070,9 @@ export function ClientsPage() {
                     onChange={(e) => setProjectStatus(e.target.value)}
                     className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs font-mono"
                   >
-                    <option value="Backlog">Backlog</option>
                     <option value="To Do">To Do</option>
                     <option value="In Progress">In Progress</option>
                     <option value="Review">Review</option>
-                    <option value="Blocked">Blocked</option>
                     <option value="Done">Done</option>
                   </select>
                 </div>

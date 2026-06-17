@@ -12,7 +12,7 @@ import { useUpdateActivity, useDeleteActivity } from '../hooks/useActivities';
 import { useToast, useConfirm } from '../context/AppContext';
 import { EmptyState } from '../components/EmptyState';
 
-const COLUMNS = ['Backlog', 'To Do', 'In Progress', 'Review', 'Blocked', 'Done'] as const;
+const COLUMNS = ['To Do', 'In Progress', 'Review', 'Done'] as const;
 type KanbanStatus = typeof COLUMNS[number];
 
 export function WorkPage() {
@@ -128,7 +128,7 @@ export function WorkPage() {
 
       {/* KANBAN */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {COLUMNS.map(col => (
             <div key={col} className="bg-[#D4D3D0]/10 border border-[#141414]/10 p-3 min-h-[300px]">
               <div className="h-6 bg-slate-200/80 animate-pulse mb-3 rounded" />
@@ -141,11 +141,11 @@ export function WorkPage() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={FolderOpen} title="No Projects Found" description="No projects match the current filters." />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-start overflow-x-auto pb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start overflow-x-auto pb-4">
           {COLUMNS.map(col => {
             const colItems = filtered.filter(item => {
               if (item.status === col) return true;
-              if (col === 'Backlog' && !COLUMNS.includes(item.status as KanbanStatus)) return true;
+              if (col === 'To Do' && !COLUMNS.includes(item.status as KanbanStatus)) return true;
               return false;
             });
             const colIndex = COLUMNS.indexOf(col);
