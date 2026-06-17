@@ -51,6 +51,7 @@ export function MarketingPage({ activityType }) {
   const [activities, setActivities] = useState([]);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [performanceEntries, setPerformanceEntries] = useState([]);
+  const [allPerformanceEntries, setAllPerformanceEntries] = useState([]);
   const [clients, setClients] = useState([]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
@@ -160,8 +161,12 @@ export function MarketingPage({ activityType }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await activityService.getAll(activityType);
+      const [data, perfData] = await Promise.all([
+        activityService.getAll(activityType),
+        performanceService.getAll()
+      ]);
       setActivities(data || []);
+      setAllPerformanceEntries(perfData || []);
     } catch (err) {
       console.error('Failed to query marketing activities:', err);
       setError(err.message || 'Error pulling activity listings.');
@@ -378,6 +383,8 @@ export function MarketingPage({ activityType }) {
         setPerformanceEntries(prev => [created, ...prev]);
         triggerFeedback('New performance journal entry saved.');
       }
+      const perfData = await performanceService.getAll();
+      setAllPerformanceEntries(perfData || []);
       setIsPerfModalOpen(false);
     } catch (err) {
       triggerFeedback(`Failed to store entry: ${err.message}`, true);
@@ -394,6 +401,8 @@ export function MarketingPage({ activityType }) {
       try {
         await performanceService.remove(id);
         setPerformanceEntries(prev => prev.filter(item => item.id !== id));
+        const perfData = await performanceService.getAll();
+        setAllPerformanceEntries(perfData || []);
         triggerFeedback('Performance data entry deleted.');
       } catch (err) {
         triggerFeedback(`Delete entry failed: ${err.message}`, true);
@@ -413,12 +422,7 @@ export function MarketingPage({ activityType }) {
 
   // Calculate high-level stats for each individual activity (used on cards)
   const getActivitySummaryStats = (activityId) => {
-    if (typeof window === 'undefined') return { spend: 0, results: 0, roas: 0 };
-    // Get stored performance entries
-    // Since we want dynamic list on render, lookup global local database values
-    const storedPerf = localStorage.getItem('ilusa_performance_entries');
-    const allEntries = storedPerf ? JSON.parse(storedPerf) : [];
-    const matchees = allEntries.filter(e => e.activity_id === activityId);
+    const matchees = allPerformanceEntries.filter(e => e.activity_id === activityId);
     
     const spend = matchees.reduce((sum, item) => sum + Number(item.spend || 0), 0);
     const results = matchees.reduce((sum, item) => sum + Number(item.results || 0), 0);
