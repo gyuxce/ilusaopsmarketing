@@ -186,22 +186,17 @@ export default function App() {
     window.location.reload();
   };
 
-  const primaryMenuItems = [
+  const menuItems = [
     { name: 'Home', label: 'Overview', icon: LayoutDashboard },
     { name: 'Clients', label: 'Clients', icon: Users },
     { name: 'Work', label: 'Work', icon: FolderGit },
     { name: 'Ads Campaigns', label: 'Marketing', icon: Megaphone },
+    { name: 'Weekly Review', label: 'Weekly Review', icon: FileText },
     { name: 'Reports', label: 'Reports', icon: BarChart2 },
-  ];
-
-  const secondaryMenuItems = [
-    { name: 'Team', label: 'Team', icon: User },
     { name: 'Attendance', label: 'Attendance', icon: CalendarClock },
-    { name: 'Weekly Review', label: 'Weekly reviews', icon: FileText },
+    { name: 'Team', label: 'Team', icon: User },
     { name: 'Settings', label: 'Settings', icon: SettingsIcon },
   ];
-
-  const menuItems = primaryMenuItems;
 
   // Render Page body
   const renderContent = () => {
@@ -256,23 +251,7 @@ export default function App() {
       );
     });
 
-  const renderSecondaryNavItems = (onClickExtra) =>
-    secondaryMenuItems.map(item => (
-      <button
-        key={item.name}
-        onClick={() => {
-          setActiveTab(item.name);
-          if (onClickExtra) onClickExtra();
-        }}
-        className={`text-left px-2 py-2 text-[10px] cursor-pointer ${
-          activeTab === item.name
-            ? 'bg-white/10 text-white'
-            : 'text-slate-400 hover:text-white hover:bg-white/5'
-        }`}
-      >
-        {item.label}
-      </button>
-    ));
+  // Secondary menu removed, unified into main sidebar.
 
   return (
     <div className="flex h-screen bg-[#E4E3E0] font-sans text-[#141414] overflow-hidden relative print:h-auto print:overflow-visible print:bg-white">
@@ -304,10 +283,23 @@ export default function App() {
               </nav>
             </div>
 
-            <div className="p-4 border-t border-[#E4E3E0]/10 bg-[#0d0d0d]/80 space-y-3">
-              <div className="text-[9px] text-slate-500 uppercase tracking-widest">More</div>
-              <div className="grid grid-cols-2 gap-1">
-                {renderSecondaryNavItems(() => setIsMobileSidebarOpen(false))}
+            <div className="p-4 border-t border-[#E4E3E0]/10 bg-[#0d0d0d]/80">
+              {/* Logged-in User Profile */}
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 bg-[#D4D3D0] flex items-center justify-center border border-[#141414] shrink-0 text-[#141414]">
+                  <User className="h-4 w-4 font-bold" />
+                </div>
+                <div className="space-y-0.5 min-w-0 flex-1 text-[#E4E3E0]">
+                  <div
+                    className="text-[10px] font-bold tracking-tight uppercase truncate"
+                    title={userProfile?.name || session?.user?.email?.split('@')[0] || 'User'}
+                  >
+                    {userProfile?.name || session?.user?.email?.split('@')[0] || 'User'}
+                  </div>
+                  <div className="text-[8px] font-mono text-slate-500 uppercase tracking-widest leading-none truncate">
+                    {userProfile?.role || 'Staff'} / {userProfile?.department || 'Ops'}
+                  </div>
+                </div>
               </div>
             </div>
           </aside>
@@ -327,12 +319,6 @@ export default function App() {
         </div>
 
         <div className="p-4 border-t border-[#E4E3E0]/10 bg-[#0d0d0d]/80 space-y-4">
-          <div>
-            <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-2">More</div>
-            <div className="grid grid-cols-2 gap-1">
-              {renderSecondaryNavItems()}
-            </div>
-          </div>
 
           {/* Supabase connection status (hidden, kept for debug) */}
           <div className="hidden">
