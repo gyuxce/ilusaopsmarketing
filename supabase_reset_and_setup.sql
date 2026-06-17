@@ -1,14 +1,16 @@
 -- ============================================================
--- ILUSA OPS MARKETING DASHBOARD
--- Supabase Schema — Bersih, Siap Pakai
--- Jalankan seluruh file ini di Supabase SQL Editor
+-- ILUSA OPS MARKETING DASHBOARD — RESET & SETUP SCHEMA
+-- ============================================================
+-- Jalankan file ini secara menyeluruh di SQL Editor Supabase Anda.
+-- File ini akan menghapus semua tabel lama (clean reset) dan
+-- membuat ulang seluruh struktur database beserta RLS Policy-nya.
 -- ============================================================
 
--- Extension UUID
+-- Jalankan extension UUID
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================
--- RESET: Hapus tabel lama jika ada (urutan CASCADE penting)
+-- 1. CLEAN RESET: Hapus semua tabel, trigger, dan fungsi lama
 -- ============================================================
 DROP TABLE IF EXISTS public.attendance_logs CASCADE;
 DROP TABLE IF EXISTS public.weekly_reviews CASCADE;
@@ -26,7 +28,7 @@ DROP FUNCTION IF EXISTS public.check_user_is_admin_or_manager() CASCADE;
 DROP FUNCTION IF EXISTS public.get_user_role(uuid) CASCADE;
 
 -- ============================================================
--- FUNGSI HELPER: Auto-update kolom updated_at
+-- 2. FUNGSI HELPER: Auto-update kolom updated_at
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -37,9 +39,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================================
--- TABLE 1: users
--- Menyimpan profil internal tim Ilusa
+-- 3. PEMBUATAN TABEL-TABEL
 -- ============================================================
+
+-- TABLE: users (Profil tim internal)
 CREATE TABLE public.users (
   id          uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
   name        text        NOT NULL,
@@ -57,7 +60,7 @@ CREATE TRIGGER tr_users_updated_at
   BEFORE UPDATE ON public.users
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
--- Trigger: otomatis buat profil di public.users saat user mendaftar via Supabase Auth
+-- TRIGGER FUNCTION: Sinkronisasi otomatis saat user registrasi di Supabase Auth
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
@@ -80,10 +83,7 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- ============================================================
--- TABLE 2: clients
--- Data klien yang dikelola Ilusa
--- ============================================================
+-- TABLE: clients (Data klien)
 CREATE TABLE public.clients (
   id            uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_code   text        UNIQUE NOT NULL,
@@ -107,16 +107,13 @@ CREATE TRIGGER tr_clients_updated_at
 CREATE INDEX idx_clients_owner_id ON public.clients(owner_id);
 CREATE INDEX idx_clients_deleted_at ON public.clients(deleted_at);
 
--- ============================================================
--- TABLE 3: projects
--- Project per klien
--- ============================================================
+-- TABLE: projects (Project klien)
 CREATE TABLE public.projects (
   id            uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_id     uuid        NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
   project_code  text        UNIQUE NOT NULL,
   project_name  text        NOT NULL,
-  project_type  text        NOT NULL, -- 'Campaign', 'Retainer', 'One-off', dst.
+  project_type  text        NOT NULL,
   owner_id      uuid        REFERENCES public.users(id) ON DELETE SET NULL,
   assignee_id   uuid        REFERENCES public.users(id) ON DELETE SET NULL,
   start_date    date        NOT NULL,
@@ -138,10 +135,7 @@ CREATE INDEX idx_projects_client_id  ON public.projects(client_id);
 CREATE INDEX idx_projects_owner_id   ON public.projects(owner_id);
 CREATE INDEX idx_projects_deleted_at ON public.projects(deleted_at);
 
--- ============================================================
--- TABLE 4: project_members
--- Anggota tim per project
--- ============================================================
+-- TABLE: project_members (Daftar tim per project)
 CREATE TABLE public.project_members (
   id          uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id  uuid        NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
@@ -154,10 +148,7 @@ CREATE TABLE public.project_members (
 CREATE INDEX idx_project_members_project_id ON public.project_members(project_id);
 CREATE INDEX idx_project_members_user_id    ON public.project_members(user_id);
 
--- ============================================================
--- TABLE 5: marketing_activities
--- Aktivitas kampanye / creative test / konten per klien
--- ============================================================
+-- TABLE: marketing_activities (Kampanye marketing / Creative Test)
 CREATE TABLE public.marketing_activities (
   id            uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_id     uuid        NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
@@ -166,7 +157,6 @@ CREATE TABLE public.marketing_activities (
   title         text        NOT NULL,
   owner_id      uuid        REFERENCES public.users(id) ON DELETE SET NULL,
   status        text        NOT NULL DEFAULT 'Active',
-                            -- 'Draft', 'Scheduled', 'Active', 'Paused', 'Completed'
   start_date    date        NOT NULL,
   end_date      date        NOT NULL,
   channel       text        NOT NULL, -- 'Meta Ads', 'TikTok Ads', 'Google Ads', dst.
@@ -186,10 +176,7 @@ CREATE INDEX idx_marketing_activities_project_id ON public.marketing_activities(
 CREATE INDEX idx_marketing_activities_owner_id   ON public.marketing_activities(owner_id);
 CREATE INDEX idx_marketing_activities_deleted_at ON public.marketing_activities(deleted_at);
 
--- ============================================================
--- TABLE 6: work_items
--- Task / ticket kerja tim
--- ============================================================
+-- TABLE: work_items (Tugas / Task board)
 CREATE TABLE public.work_items (
   id           uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_id    uuid        REFERENCES public.clients(id) ON DELETE CASCADE,
@@ -201,9 +188,7 @@ CREATE TABLE public.work_items (
   description  text,
   assignee_id  uuid        REFERENCES public.users(id) ON DELETE SET NULL,
   priority     text        NOT NULL DEFAULT 'Medium',
-                           -- 'Low', 'Medium', 'High', 'Urgent'
   status       text        NOT NULL DEFAULT 'Backlog',
-                           -- 'Backlog', 'To Do', 'In Progress', 'Review', 'Blocked', 'Done'
   start_date   date,
   due_date     date,
   completed_at timestamptz,
@@ -222,10 +207,7 @@ CREATE INDEX idx_work_items_activity_id ON public.work_items(activity_id);
 CREATE INDEX idx_work_items_assignee_id ON public.work_items(assignee_id);
 CREATE INDEX idx_work_items_deleted_at  ON public.work_items(deleted_at);
 
--- ============================================================
--- TABLE 7: performance_entries
--- Data performa harian per aktivitas marketing
--- ============================================================
+-- TABLE: performance_entries (Jurnal log metrik harian iklan)
 CREATE TABLE public.performance_entries (
   id          uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
   activity_id uuid        NOT NULL REFERENCES public.marketing_activities(id) ON DELETE CASCADE,
@@ -249,10 +231,7 @@ CREATE TRIGGER tr_performance_entries_updated_at
 CREATE INDEX idx_performance_entries_activity_id ON public.performance_entries(activity_id);
 CREATE INDEX idx_performance_entries_metric_date ON public.performance_entries(metric_date);
 
--- ============================================================
--- TABLE 8: weekly_reviews
--- Catatan review mingguan tim
--- ============================================================
+-- TABLE: weekly_reviews (Laporan review mingguan)
 CREATE TABLE public.weekly_reviews (
   id             uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_id      uuid        NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
@@ -275,10 +254,7 @@ CREATE INDEX idx_weekly_reviews_client_id      ON public.weekly_reviews(client_i
 CREATE INDEX idx_weekly_reviews_project_id     ON public.weekly_reviews(project_id);
 CREATE INDEX idx_weekly_reviews_facilitator_id ON public.weekly_reviews(facilitator_id);
 
--- ============================================================
--- TABLE 9: attendance_logs
--- Pencatatan clock-in harian per user
--- ============================================================
+-- TABLE: attendance_logs (Absensi clock-in harian)
 CREATE TABLE public.attendance_logs (
   id             uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id        uuid        NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
@@ -297,7 +273,7 @@ CREATE INDEX idx_attendance_logs_user_id    ON public.attendance_logs(user_id);
 CREATE INDEX idx_attendance_logs_clock_date ON public.attendance_logs(clock_date);
 
 -- ============================================================
--- ROW LEVEL SECURITY (RLS)
+-- 4. SECURITY & ROW LEVEL SECURITY (RLS)
 -- ============================================================
 ALTER TABLE public.users              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.clients            ENABLE ROW LEVEL SECURITY;
@@ -309,8 +285,7 @@ ALTER TABLE public.performance_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.weekly_reviews     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance_logs    ENABLE ROW LEVEL SECURITY;
 
--- ---- Helper functions untuk RLS ----
-
+-- helper functions untuk validasi RLS
 CREATE OR REPLACE FUNCTION public.check_user_is_admin_or_manager()
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (
@@ -324,13 +299,10 @@ RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT role FROM public.users WHERE id = user_uuid;
 $$;
 
--- ---- Policies: users ----
-
--- Semua user yang login bisa baca profil sesama
+-- RLS POLICIES: users
 CREATE POLICY "Authenticated can read users"
   ON public.users FOR SELECT TO authenticated USING (true);
 
--- User bisa insert profil sendiri (role Staff) atau Admin/Manager bisa insert siapapun
 CREATE POLICY "User can insert own staff profile"
   ON public.users FOR INSERT TO authenticated
   WITH CHECK (
@@ -338,7 +310,6 @@ CREATE POLICY "User can insert own staff profile"
     OR public.check_user_is_admin_or_manager()
   );
 
--- User hanya bisa update profilnya sendiri, tanpa mengubah role
 CREATE POLICY "User can update own profile"
   ON public.users FOR UPDATE TO authenticated
   USING (id = auth.uid())
@@ -347,16 +318,12 @@ CREATE POLICY "User can update own profile"
     AND role = public.get_user_role(auth.uid())
   );
 
--- Admin/Manager bisa kelola semua profil
 CREATE POLICY "Admin manager can manage all users"
   ON public.users FOR ALL TO authenticated
   USING (public.check_user_is_admin_or_manager())
   WITH CHECK (public.check_user_is_admin_or_manager());
 
--- ---- Policies: tabel operasional (clients, projects, dst.) ----
--- Semua user yang sudah login bisa baca dan tulis.
--- Tightening lebih lanjut bisa dilakukan per role jika perlu.
-
+-- RLS POLICIES: operational tables
 CREATE POLICY "Authenticated manage clients"
   ON public.clients FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
@@ -378,31 +345,26 @@ CREATE POLICY "Authenticated manage performance_entries"
 CREATE POLICY "Authenticated manage weekly_reviews"
   ON public.weekly_reviews FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- ---- Policies: attendance_logs (lebih ketat) ----
-
--- User hanya bisa baca log sendiri; Admin/Manager bisa baca semua
+-- RLS POLICIES: attendance_logs (lebih aman)
 CREATE POLICY "User read own or manager read all attendance"
   ON public.attendance_logs FOR SELECT TO authenticated
   USING (user_id = auth.uid() OR public.check_user_is_admin_or_manager());
 
--- User hanya bisa clock-in untuk diri sendiri
 CREATE POLICY "User clock in for themselves"
   ON public.attendance_logs FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
 
--- Hanya Admin/Manager yang bisa update log absensi
 CREATE POLICY "Manager can update attendance"
   ON public.attendance_logs FOR UPDATE TO authenticated
   USING (public.check_user_is_admin_or_manager())
   WITH CHECK (public.check_user_is_admin_or_manager());
 
--- Hanya Admin/Manager yang bisa hapus log absensi
 CREATE POLICY "Manager can delete attendance"
   ON public.attendance_logs FOR DELETE TO authenticated
   USING (public.check_user_is_admin_or_manager());
 
 -- ============================================================
--- VIEW HELPER: Shortcut untuk data aktif (non-deleted)
+-- 5. VIEW HELPER (Data Aktif / Non-deleted)
 -- ============================================================
 CREATE OR REPLACE VIEW public.vw_active_clients AS
   SELECT * FROM public.clients WHERE deleted_at IS NULL;

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Terminal, Lock, Mail, ArrowRight, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { isSupabaseConfigured } from '../services/supabaseClient';
-
 export function LoginPage({ onLogin }) {
+  const isSupabaseConfigured = true;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');

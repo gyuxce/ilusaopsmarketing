@@ -10,11 +10,12 @@ import {
   RefreshCw,
   Printer
 } from 'lucide-react';
-import { marketingService } from '../services/marketingService';
-import { clientsService } from '../services/clientsService';
-import { workService } from '../services/workService';
+import { activityService } from '../services/activityService';
+import { performanceService } from '../services/performanceService';
+import { clientService } from '../services/clientService';
+import { projectService } from '../services/projectService';
 import { attendanceService } from '../services/attendanceService';
-import { reviewsService } from '../services/reviewsService';
+import { reviewService } from '../services/reviewService';
 import { formatMoney, formatDate } from '../utils/formatters';
 
 export function ReportsPage() {
@@ -42,8 +43,8 @@ export function ReportsPage() {
       } 
       else if (reportType === 'weekly') {
         const [reviews, projs] = await Promise.all([
-          reviewsService.getWeeklyReviews(),
-          workService.getProjects()
+          reviewService.getAll(),
+          projectService.getAll()
         ]);
         
         // Filter reviews by date range
@@ -56,9 +57,9 @@ export function ReportsPage() {
       }
       else if (reportType === 'ads') {
         const [clientsData, activitiesData, entriesData] = await Promise.all([
-          clientsService.getClients(false),
-          marketingService.getActivities(),
-          marketingService.getPerformanceEntries()
+          clientService.getAll(),
+          activityService.getAll(),
+          performanceService.getAll()
         ]);
         
         setClients(clientsData || []);

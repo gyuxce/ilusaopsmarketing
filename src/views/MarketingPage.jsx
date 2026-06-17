@@ -23,9 +23,11 @@ import {
   Activity,
   Briefcase
 } from 'lucide-react';
-import { marketingService } from '../services/marketingService';
-import { clientsService } from '../services/clientsService';
-import { workService } from '../services/workService';
+import { activityService } from '../services/activityService';
+import { performanceService } from '../services/performanceService';
+import { clientService } from '../services/clientService';
+import { projectService } from '../services/projectService';
+import { userService } from '../services/userService';
 import { formatMoney, formatDate, getLocalDateString } from '../utils/formatters';
 import { useToast, useConfirm } from '../context/AppContext';
 import { SkeletonCard, SkeletonList } from '../components/Skeleton';
@@ -140,13 +142,13 @@ export function MarketingPage({ activityType }) {
   // Load static workspace elements
   const loadStaticWorkspace = async () => {
     try {
-      const clientsData = await clientsService.getClients(false);
+      const clientsData = await clientService.getAll();
       setClients(clientsData || []);
 
-      const projectsData = await workService.getProjects(false);
+      const projectsData = await projectService.getAll();
       setProjects(projectsData || []);
 
-      const usersData = await workService.getUsers();
+      const usersData = await userService.getAll();
       setUsers(usersData || []);
     } catch (err) {
       console.error('Error loading metadata collections:', err);
@@ -158,7 +160,7 @@ export function MarketingPage({ activityType }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await marketingService.getActivities(activityType);
+      const data = await activityService.getAll(activityType);
       setActivities(data || []);
     } catch (err) {
       console.error('Failed to query marketing activities:', err);
@@ -189,7 +191,7 @@ export function MarketingPage({ activityType }) {
   const loadPerformanceRecords = async (activityId) => {
     setPerfLoading(true);
     try {
-      const entries = await marketingService.getPerformanceEntries(activityId);
+      const entries = await performanceService.getByActivity(activityId);
       setPerformanceEntries(entries || []);
     } catch (err) {
       console.error('Failed to load performance log entries:', err);
@@ -279,13 +281,13 @@ export function MarketingPage({ activityType }) {
     try {
       if (editingActivity) {
         // UPDATE Mode
-        const updated = await marketingService.updateActivity(editingActivity.id, payload);
+        const updated = await activityService.update(editingActivity.id, payload);
         setActivities(prev => prev.map(item => item.id === editingActivity.id ? updated : item));
         setSelectedActivity(prev => (prev && prev.id === editingActivity.id) ? { ...prev, ...updated } : prev);
         triggerFeedback('Activity successfully updated.');
       } else {
         // CREATE Mode
-        const created = await marketingService.createActivity(payload);
+        const created = await activityService.create(payload);
         setActivities(prev => [created, ...prev]);
         triggerFeedback('New Operational activity deployed successfully.');
       }
@@ -304,7 +306,7 @@ export function MarketingPage({ activityType }) {
 
     if (isConfirmed) {
       try {
-        await marketingService.softDeleteActivity(actToDelete.id);
+        await activityService.softDelete(actToDelete.id);
         setActivities(prev => prev.filter(item => item.id !== actToDelete.id));
         if (selectedActivity && selectedActivity.id === actToDelete.id) {
           setSelectedActivity(null);
@@ -367,12 +369,12 @@ export function MarketingPage({ activityType }) {
     try {
       if (editingPerfEntry) {
         // UPDATE MODE
-        const updated = await marketingService.updatePerformanceEntry(editingPerfEntry.id, payload);
+        const updated = await performanceService.update(editingPerfEntry.id, payload);
         setPerformanceEntries(prev => prev.map(item => item.id === editingPerfEntry.id ? updated : item));
         triggerFeedback('Performance record updated.');
       } else {
         // CREATE MODE
-        const created = await marketingService.createPerformanceEntry(payload);
+        const created = await performanceService.create(payload);
         setPerformanceEntries(prev => [created, ...prev]);
         triggerFeedback('New performance journal entry saved.');
       }
@@ -390,7 +392,7 @@ export function MarketingPage({ activityType }) {
 
     if (isConfirmed) {
       try {
-        await marketingService.deletePerformanceEntry(id);
+        await performanceService.remove(id);
         setPerformanceEntries(prev => prev.filter(item => item.id !== id));
         triggerFeedback('Performance data entry deleted.');
       } catch (err) {

@@ -22,7 +22,7 @@ import {
   Database,
   Copy
 } from 'lucide-react';
-import { workService } from '../services/workService';
+import { userService } from '../services/userService';
 import { useAuth } from '../hooks/useAuth';
 
 // DDL schemas removed
@@ -73,7 +73,7 @@ export function SettingsPage() {
     try {
       const userId = session?.user?.id;
       if (userId) {
-        await workService.updateUser(userId, {
+        await userService.update(userId, {
           name: profileName,
           department: profileDepartment
         });
@@ -104,14 +104,10 @@ export function SettingsPage() {
 
     setUpdatingPassword(true);
     try {
-      const { supabase, isSupabaseConfigured } = await import('../services/supabaseClient');
-      if (isSupabaseConfigured && supabase) {
-        const { error } = await supabase.auth.updateUser({ password: password });
-        if (error) throw error;
-        showToast('Sandi akun berhasil diatur ulang.');
-      } else {
-        showToast('Fitur aktif saat terkoneksi ke Supabase (Mock OK).');
-      }
+      const { supabase } = await import('../lib/supabase');
+      const { error } = await supabase.auth.updateUser({ password: password });
+      if (error) throw error;
+      showToast('Sandi akun berhasil diatur ulang.');
       setPassword('');
       setConfirmPassword('');
     } catch (err) {

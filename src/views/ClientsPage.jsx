@@ -25,15 +25,23 @@ import {
   Grid
 } from 'lucide-react';
 import { clientService } from '../services/clientService';
-import { useClients } from '../hooks/useClients';
+import { userService } from '../services/userService';
+import { projectService } from '../services/projectService';
+import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '../hooks/useClients';
 import { formatDate, getLocalDateString } from '../utils/formatters';
 import { useToast, useConfirm } from '../context/AppContext';
 import { SkeletonCard, SkeletonList } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
-import { workService } from '../services/workService';
 
 export function ClientsPage() {
-  const { clients, loading, error, refresh, createClient, updateClient, deleteClient } = useClients();
+  const { data: clients = [], isLoading: loading, error, refetch: refresh } = useClients();
+  const createClientMutation = useCreateClient();
+  const updateClientMutation = useUpdateClient();
+  const deleteClientMutation = useDeleteClient();
+
+  const createClient = async (payload) => createClientMutation.mutateAsync(payload);
+  const updateClient = async (id, payload) => updateClientMutation.mutateAsync({ id, payload });
+  const deleteClient = async (id) => deleteClientMutation.mutateAsync(id);
   const { showSuccess, showError } = useToast();
   const confirm = useConfirm();
   const [selectedClient, setSelectedClient] = useState(null);
@@ -77,7 +85,7 @@ export function ClientsPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const users = await workService.getUsers();
+        const users = await userService.getAll();
         setTeamMembers(users || []);
       } catch (err) {
         console.error('Failed to load team members:', err);
@@ -92,7 +100,7 @@ export function ClientsPage() {
   const fetchProjects = async (clientId) => {
     setProjectsLoading(true);
     try {
-      const data = await clientService.getClientProjects(clientId);
+      const data = await projectService.getByClient(clientId);
       setClientProjects(data || []);
     } catch (err) {
       console.error('Failed to load client projects:', err);
@@ -255,10 +263,10 @@ export function ClientsPage() {
 
     try {
       if (editingProject) {
-        await clientService.updateClientProject(editingProject.id, payload);
+        await projectService.update(editingProject.id, payload);
         triggerFeedback('Project updated successfully.');
       } else {
-        await clientService.createClientProject(payload);
+        await projectService.create(payload);
         triggerFeedback('New project created successfully.');
       }
       fetchProjects(selectedClient.id);
@@ -272,7 +280,7 @@ export function ClientsPage() {
     const isConfirmed = window.confirm('Are you sure you want to delete this project?');
     if (isConfirmed) {
       try {
-        await clientService.softDeleteProject(projId);
+        await projectService.softDelete(projId);
         triggerFeedback('Project deleted successfully.');
         fetchProjects(selectedClient.id);
       } catch (err) {
