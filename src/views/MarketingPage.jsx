@@ -43,6 +43,8 @@ const STATUS_COLORS = {
   Scheduled: 'bg-purple-50 border-purple-300 text-purple-700'
 };
 
+const PRESET_RESULT_TYPES = ['Leads', 'WhatsApp Chats', 'Purchases', 'Link Clicks', 'Video Views', 'App Installs'];
+
 const sanitizeMoneyToNumber = (val) => {
   if (!val) return 0;
   let str = String(val).trim();
@@ -1534,13 +1536,35 @@ export function MarketingPage({ activityType }) {
 
                 <div>
                   <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Result Type</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Messaging conversations started"
-                    value={fResultType}
-                    onChange={(e) => setFResultType(e.target.value)}
-                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none placeholder:text-slate-400 text-xs"
-                  />
+                  <div className="space-y-1.5">
+                    <select
+                      value={PRESET_RESULT_TYPES.includes(fResultType) ? fResultType : 'Custom'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === 'Custom') {
+                          setFResultType('');
+                        } else {
+                          setFResultType(val);
+                        }
+                      }}
+                      className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
+                    >
+                      {PRESET_RESULT_TYPES.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                      <option value="Custom">Custom / Input Manual</option>
+                    </select>
+                    
+                    {(!PRESET_RESULT_TYPES.includes(fResultType) || fResultType === '') && (
+                      <input
+                        type="text"
+                        placeholder="e.g. Messaging conversations started"
+                        value={fResultType}
+                        onChange={(e) => setFResultType(e.target.value)}
+                        className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none placeholder:text-slate-400 text-xs"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
 
