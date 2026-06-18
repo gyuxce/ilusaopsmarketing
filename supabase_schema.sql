@@ -97,7 +97,7 @@ CREATE TABLE public.clients (
   contact_name  text        NOT NULL,
   contact_email text        NOT NULL,
   contact_phone text,
-  owner_id      uuid        REFERENCES public.users(id) ON DELETE SET NULL,
+  owner_id      uuid        REFERENCES public.users(id) ON DELETE SET NULL ON UPDATE CASCADE,
   status        text        NOT NULL DEFAULT 'Active'
                             CHECK (status IN ('Active', 'Lead', 'Churned', 'Paused')),
   notes         text,
@@ -123,8 +123,8 @@ CREATE TABLE public.projects (
   project_code  text        UNIQUE NOT NULL,
   project_name  text        NOT NULL,
   project_type  text        NOT NULL, -- 'Campaign', 'Retainer', 'One-off', dst.
-  owner_id      uuid        REFERENCES public.users(id) ON DELETE SET NULL,
-  assignee_id   uuid        REFERENCES public.users(id) ON DELETE SET NULL,
+  owner_id      uuid        REFERENCES public.users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+  assignee_id   uuid        REFERENCES public.users(id) ON DELETE SET NULL ON UPDATE CASCADE,
   start_date    date        NOT NULL,
   due_date      date        NOT NULL,
   status        text        NOT NULL DEFAULT 'Briefing',
@@ -151,7 +151,7 @@ CREATE INDEX idx_projects_deleted_at ON public.projects(deleted_at);
 CREATE TABLE public.project_members (
   id          uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id  uuid        NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
-  user_id     uuid        NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  user_id     uuid        NOT NULL REFERENCES public.users(id) ON DELETE CASCADE ON UPDATE CASCADE,
   member_role text        NOT NULL DEFAULT 'Member',
   created_at  timestamptz NOT NULL DEFAULT timezone('utc', now()),
   UNIQUE(project_id, user_id)
@@ -267,7 +267,7 @@ CREATE TABLE public.weekly_reviews (
   client_id      uuid        NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
   project_id     uuid        REFERENCES public.projects(id) ON DELETE SET NULL,
   review_date    date        NOT NULL,
-  facilitator_id uuid        NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
+  facilitator_id uuid        NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
   status         text        NOT NULL DEFAULT 'Draft',
   weekly_notes   text,
   next_action    text,
@@ -290,7 +290,7 @@ CREATE INDEX idx_weekly_reviews_facilitator_id ON public.weekly_reviews(facilita
 -- ============================================================
 CREATE TABLE public.attendance_logs (
   id             uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id        uuid        NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  user_id        uuid        NOT NULL REFERENCES public.users(id) ON DELETE CASCADE ON UPDATE CASCADE,
   clock_date     date        NOT NULL,
   clock_in_time  timestamptz NOT NULL DEFAULT timezone('utc', now()),
   created_at     timestamptz NOT NULL DEFAULT timezone('utc', now()),
