@@ -77,7 +77,9 @@ BEGIN
     'Ops',
     'Active'
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (email) DO UPDATE 
+  SET id = EXCLUDED.id,
+      name = COALESCE(EXCLUDED.name, public.users.name);
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
