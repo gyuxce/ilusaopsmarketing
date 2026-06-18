@@ -5,7 +5,7 @@ export const reviewService = {
   async getAll(): Promise<WeeklyReview[]> {
     const { data, error } = await supabase
       .from('weekly_reviews')
-      .select('*')
+      .select('*, facilitator:users!weekly_reviews_facilitator_id_fkey(name)')
       .order('review_date', { ascending: false });
     if (error) throw error;
     return data ?? [];
@@ -15,7 +15,7 @@ export const reviewService = {
     const { data, error } = await supabase
       .from('weekly_reviews')
       .insert([payload])
-      .select()
+      .select('*, facilitator:users!weekly_reviews_facilitator_id_fkey(name)')
       .single();
     if (error) throw error;
     return data;
@@ -26,7 +26,7 @@ export const reviewService = {
       .from('weekly_reviews')
       .update(payload)
       .eq('id', id)
-      .select()
+      .select('*, facilitator:users!weekly_reviews_facilitator_id_fkey(name)')
       .single();
     if (error) throw error;
     return data;

@@ -242,7 +242,10 @@ export function WeeklyReview() {
                         {client ? client.client_code : 'Custom'}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed normal-case">
+                    <div className="text-[8px] font-mono text-slate-400 uppercase leading-none">
+                      By: <span className="text-slate-600 font-bold">{(rev as any).facilitator?.name || 'Unknown'}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed normal-case mt-0.5">
                       {rev.weekly_notes}
                     </p>
                   </button>
@@ -268,6 +271,9 @@ export function WeeklyReview() {
                     </span>
                     <span className="text-[9px] font-mono bg-[#141414] text-white font-bold px-2 py-0.5 uppercase">
                       {selectedReview.status}
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-400 uppercase">
+                      By: <strong className="text-slate-800">{(selectedReview as any).facilitator?.name || 'Unknown'}</strong>
                     </span>
                   </div>
                   {(() => {
