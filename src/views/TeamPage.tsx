@@ -91,9 +91,18 @@ export function TeamPage() {
           <h1 className="text-2xl font-bold text-[#141414] uppercase tracking-wider">Team</h1>
           <p className="text-[11px] text-slate-500 font-mono mt-0.5">Members, roles, and work assignments</p>
         </div>
-        <p className="mt-2 md:mt-0 max-w-xs text-[9px] text-slate-500 font-mono uppercase text-right leading-relaxed">
-          Akun baru diundang via Supabase Auth. Profil tim dibuat otomatis saat pertama login.
-        </p>
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+          <p className="max-w-xs text-[9px] text-slate-500 font-mono uppercase md:text-right leading-relaxed">
+            Akun baru diundang via Supabase Auth. Profil tim dibuat otomatis saat pertama login.
+          </p>
+          <button
+            onClick={openAddModal}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-600 border border-orange-600 text-white font-mono text-xs font-bold uppercase tracking-wider hover:bg-orange-700 transition-all cursor-pointer shrink-0 shadow-sm"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Member</span>
+          </button>
+        </div>
       </div>
 
       {/* SEARCH + FILTERS */}
