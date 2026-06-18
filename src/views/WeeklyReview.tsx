@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Play, Trash2, Edit3, X } from 'lucide-react';
 import { useReviews, useCreateReview, useUpdateReview, useDeleteReview } from '../hooks/useReviews';
-import { useProjects } from '../hooks/useProjects';
+import { useClients } from '../hooks/useClients';
 import { useAuth } from '../hooks/useAuth';
 import { getLocalDateString } from '../utils/formatters';
 import type { WeeklyReview as WeeklyReviewType } from '../types';
@@ -10,14 +10,16 @@ export function WeeklyReview() {
   const { session } = useAuth();
 
   const { data: reviews = [], isLoading } = useReviews();
-  const { data: projects = [] } = useProjects();
+  const { data: clients = [] } = useClients();
+
+  const activeClients = clients.filter(c => c.status === 'Active');
 
   const createReview = useCreateReview();
   const updateReview = useUpdateReview();
   const deleteReview = useDeleteReview();
 
   // Form state
-  const [projectSelected, setProjectSelected] = useState('');
+  const [clientSelected, setClientSelected] = useState('');
   const [reviewDate, setReviewDate] = useState(getLocalDateString);
   const [weeklyNotes, setWeeklyNotes] = useState('');
   const [nextAction, setNextAction] = useState('');
@@ -34,13 +36,12 @@ export function WeeklyReview() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const activeProject = projectSelected || projects[0]?.id || '';
-    if (!weeklyNotes || !activeProject) return;
+    const activeClient = clientSelected || activeClients[0]?.id || '';
+    if (!weeklyNotes || !activeClient) return;
 
-    const matched = projects.find(p => p.id === activeProject);
     const payload: Partial<WeeklyReviewType> = {
-      project_id: activeProject,
-      client_id: matched?.client_id,
+      client_id: activeClient,
+      project_id: null,
       review_date: reviewDate,
       weekly_notes: weeklyNotes,
       next_action: nextAction,
@@ -64,7 +65,7 @@ export function WeeklyReview() {
   };
 
   const handleEdit = (rev: WeeklyReviewType) => {
-    setProjectSelected(rev.project_id ?? '');
+    setClientSelected(rev.client_id ?? '');
     setReviewDate(rev.review_date);
     setWeeklyNotes(rev.weekly_notes ?? '');
     setNextAction(rev.next_action ?? '');
@@ -120,14 +121,15 @@ export function WeeklyReview() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1.5 tracking-wider">Sprint Project Link</label>
+                <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1.5 tracking-wider">Client Link *</label>
                 <select 
-                  value={projectSelected || projects[0]?.id || ''} 
-                  onChange={e => setProjectSelected(e.target.value)}
+                  value={clientSelected || activeClients[0]?.id || ''} 
+                  onChange={e => setClientSelected(e.target.value)}
                   className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs font-mono"
+                  required
                 >
-                  {projects.length === 0 && <option value="">— No projects —</option>}
-                  {projects.map(p => <option key={p.id} value={p.id}>{p.project_code} - {p.project_name.substring(0, 32)}</option>)}
+                  {activeClients.length === 0 && <option value="">— No active clients —</option>}
+                  {activeClients.map(c => <option key={c.id} value={c.id}>{c.client_code} - {c.company_name.substring(0, 32)}</option>)}
                 </select>
               </div>
 
@@ -197,7 +199,7 @@ export function WeeklyReview() {
             setNextAction('');
             const today = getLocalDateString();
             setReviewDate(today);
-            setProjectSelected(projects[0]?.id || '');
+            setClientSelected(activeClients[0]?.id || '');
             setIsModalOpen(true);
           }}
           className="flex items-center gap-1.5 bg-[#141414] text-white font-mono text-[10px] font-bold uppercase tracking-wider px-4 py-2.5 hover:bg-orange-600 transition-all cursor-pointer"
@@ -220,7 +222,7 @@ export function WeeklyReview() {
           ) : (
             <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
               {reviews.map(rev => {
-                const proj = projects.find(p => p.id === rev.project_id);
+                const client = clients.find(c => c.id === rev.client_id);
                 const isActive = rev.id === activeReviewId;
                 return (
                   <button
@@ -237,7 +239,7 @@ export function WeeklyReview() {
                         {rev.review_date}
                       </span>
                       <span className="text-slate-400 font-bold">
-                        {proj ? proj.project_code : 'Custom'}
+                        {client ? client.client_code : 'Custom'}
                       </span>
                     </div>
                     <p className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed normal-case">
@@ -269,10 +271,10 @@ export function WeeklyReview() {
                     </span>
                   </div>
                   {(() => {
-                    const proj = projects.find(p => p.id === selectedReview.project_id);
-                    return proj ? (
+                    const client = clients.find(c => c.id === selectedReview.client_id);
+                    return client ? (
                       <h2 className="text-xs font-bold text-[#141414] font-mono uppercase">
-                        Project Link: <span className="text-orange-700 font-extrabold">{proj.project_code} - {proj.project_name}</span>
+                        Client Partner: <span className="text-orange-700 font-extrabold">{client.client_code} - {client.company_name}</span>
                       </h2>
                     ) : null;
                   })()}
