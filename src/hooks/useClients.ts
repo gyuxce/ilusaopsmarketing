@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientService } from '../services/clientService';
+import { useAuth } from './useAuth';
 import type { Client } from '../types';
 
 // Query key constants
@@ -10,9 +11,11 @@ export const CLIENT_KEYS = {
 };
 
 export function useClients() {
+  const { session } = useAuth();
   return useQuery({
     queryKey: CLIENT_KEYS.lists(),
     queryFn: clientService.getAll,
+    enabled: !!session,
   });
 }
 

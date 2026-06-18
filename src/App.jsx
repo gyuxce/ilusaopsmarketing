@@ -139,7 +139,7 @@ export default function App() {
     const lowerQuery = query.toLowerCase();
 
     // 1. Match Clients
-    const matchedClients = (clients?.data || []).filter(c =>
+    const matchedClients = (clients || []).filter(c =>
       c.company_name?.toLowerCase().includes(lowerQuery) ||
       c.contact_name?.toLowerCase().includes(lowerQuery)
     );
