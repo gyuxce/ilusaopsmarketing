@@ -22,7 +22,9 @@ export function TeamPage() {
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [userRole, setUserRole] = useState<UserType['role']>('Staff');
-  const [userDepartment, setUserDepartment] = useState('Operations');
+  const [userDepartment, setUserDepartment] = useState('Ops');
+  const [selectedDeptType, setSelectedDeptType] = useState('Ops');
+  const [customDepartment, setCustomDepartment] = useState('');
   const [userStatus, setUserStatus] = useState<UserType['status']>('Active');
 
   // TanStack Query — fetch & mutate
@@ -42,15 +44,33 @@ export function TeamPage() {
 
   const openAddModal = () => {
     setEditingUser(null);
-    setUserName(''); setUserEmail(''); setUserRole('Staff');
-    setUserDepartment('Operations'); setUserStatus('Active');
+    setUserName(''); 
+    setUserEmail(''); 
+    setUserRole('Staff');
+    setUserDepartment('Ops'); 
+    setSelectedDeptType('Ops');
+    setCustomDepartment('');
+    setUserStatus('Active');
     setIsModalOpen(true);
   };
 
   const openEditModal = (u: UserType) => {
     setEditingUser(u);
-    setUserName(u.name); setUserEmail(u.email); setUserRole(u.role);
-    setUserDepartment(u.department); setUserStatus(u.status);
+    setUserName(u.name); 
+    setUserEmail(u.email); 
+    setUserRole(u.role);
+    setUserStatus(u.status);
+    
+    const standardDepts = ['Ops', 'Marketing', 'Design', 'Copywriting', 'Ads'];
+    if (standardDepts.includes(u.department)) {
+      setSelectedDeptType(u.department);
+      setUserDepartment(u.department);
+      setCustomDepartment('');
+    } else {
+      setSelectedDeptType('Other');
+      setUserDepartment(u.department);
+      setCustomDepartment(u.department);
+    }
     setIsModalOpen(true);
   };
 
@@ -230,8 +250,40 @@ export function TeamPage() {
               </div>
               <div>
                 <label className="block text-[9px] font-mono font-bold text-slate-700 uppercase mb-1">Department *</label>
-                <input type="text" placeholder="e.g. Design, Copywriting, Operations" value={userDepartment} onChange={e => setUserDepartment(e.target.value)} required
-                  className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs font-mono" />
+                <select 
+                  value={selectedDeptType} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setSelectedDeptType(val);
+                    if (val !== 'Other') {
+                      setUserDepartment(val);
+                    } else {
+                      setUserDepartment(customDepartment);
+                    }
+                  }}
+                  className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs font-mono"
+                >
+                  <option value="Ops">Ops</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="Design">Design</option>
+                  <option value="Copywriting">Copywriting</option>
+                  <option value="Ads">Ads</option>
+                  <option value="Other">Other / Input Manual</option>
+                </select>
+                {selectedDeptType === 'Other' && (
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Finance, Tech, etc." 
+                    value={customDepartment} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setCustomDepartment(val);
+                      setUserDepartment(val);
+                    }} 
+                    required
+                    className="w-full mt-2 p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs font-mono" 
+                  />
+                )}
               </div>
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2 text-[10px] font-mono">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-slate-200 bg-slate-50 uppercase cursor-pointer">Cancel</button>
