@@ -1025,11 +1025,44 @@ export function ClientsPage() {
                   />
                 </div>
                 <div>
+                  <label className="block text-[9px] font-mono font-bold text-slate-700 uppercase mb-1">Kanban Status</label>
+                  <select
+                    value={projectStatus}
+                    onChange={(e) => setProjectStatus(e.target.value)}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs font-mono"
+                  >
+                    <option value="To Do">To Do</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Review">Review</option>
+                    <option value="Done">Done</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="block text-[9px] font-mono font-bold text-slate-700 uppercase mb-1">Tanggal Mulai *</label>
                   <input 
                     type="date" 
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      setStartDate(newStart);
+                      if (dueDate < newStart) {
+                        setDueDate(newStart);
+                      }
+                    }}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs font-mono"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-mono font-bold text-slate-700 uppercase mb-1">Tanggal Selesai *</label>
+                  <input 
+                    type="date" 
+                    value={dueDate}
+                    min={startDate}
+                    onChange={(e) => setDueDate(e.target.value)}
                     className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs font-mono"
                     required
                   />
@@ -1061,19 +1094,6 @@ export function ClientsPage() {
                     {teamMembers.map(u => (
                       <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[9px] font-mono font-bold text-slate-700 uppercase mb-1">Kanban Status</label>
-                  <select
-                    value={projectStatus}
-                    onChange={(e) => setProjectStatus(e.target.value)}
-                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs font-mono"
-                  >
-                    <option value="To Do">To Do</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Review">Review</option>
-                    <option value="Done">Done</option>
                   </select>
                 </div>
               </div>
