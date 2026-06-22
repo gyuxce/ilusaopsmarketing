@@ -72,6 +72,7 @@ export function ReportsPage() {
   const [reportType, setReportType] = useState('attendance');
   const [startDate, setStartDate] = useState(getFirstOfMonthString());
   const [endDate, setEndDate] = useState(getLocalDateString());
+  const [selectedClientId, setSelectedClientId] = useState('All');
   const [loading, setLoading] = useState(false);
 
   // Data States
@@ -136,6 +137,21 @@ export function ReportsPage() {
     // This effect intentionally generates the initial default report once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (reportType !== 'ads' || clients.length > 0) return;
+
+    let cancelled = false;
+    clientService.getAll()
+      .then(data => {
+        if (!cancelled) setClients(data || []);
+      })
+      .catch(err => console.error('Error loading clients for report filter:', err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reportType, clients.length]);
 
   const handlePrint = () => {
     window.print();
@@ -227,12 +243,20 @@ export function ReportsPage() {
   };
 
   const renderAdsReport = () => {
-    const totals = aggregateEntries(performanceEntries);
     const clientMap = clients.reduce((acc, client) => ({ ...acc, [client.id]: client.company_name }), {});
     const projectMap = projects.reduce((acc, project) => ({ ...acc, [project.id]: project.project_name }), {});
     const activityMap = activities.reduce((acc, activity) => ({ ...acc, [activity.id]: activity }), {});
-    const activeActivityIds = new Set(performanceEntries.map(entry => entry.activity_id));
-    const visibleActivities = activities.filter(activity => activeActivityIds.has(activity.id));
+    const filteredEntries = selectedClientId === 'All'
+      ? performanceEntries
+      : performanceEntries.filter(entry => activityMap[entry.activity_id]?.client_id === selectedClientId);
+    const totals = aggregateEntries(filteredEntries);
+    const activeActivityIds = new Set(filteredEntries.map(entry => entry.activity_id));
+    const visibleActivities = activities.filter(activity => {
+      if (!activeActivityIds.has(activity.id)) return false;
+      if (selectedClientId !== 'All' && activity.client_id !== selectedClientId) return false;
+      return true;
+    });
+    const selectedClientName = selectedClientId === 'All' ? 'Semua Client' : clientMap[selectedClientId] || 'Client terpilih';
     const funnel = visibleActivities.reduce((acc, activity) => ({
       webinar: acc.webinar + Number(activity.participants_webinar || 0),
       mapping: acc.mapping + Number(activity.participants_mapping || 0),
@@ -244,7 +268,7 @@ export function ReportsPage() {
       : 0;
     const warnings = getKpiWarnings(totals);
     const bestCampaign = visibleActivities
-      .map(activity => ({ activity, totals: aggregateEntries(performanceEntries.filter(entry => entry.activity_id === activity.id)) }))
+      .map(activity => ({ activity, totals: aggregateEntries(filteredEntries.filter(entry => entry.activity_id === activity.id)) }))
       .filter(item => item.totals.leads > 0)
       .sort((a, b) => a.totals.cpl - b.totals.cpl)[0];
 
@@ -253,6 +277,7 @@ export function ReportsPage() {
         <div className="border-b-2 border-[#141414] pb-4">
           <h2 className="text-xl font-black uppercase tracking-wider text-[#141414]">Laporan Performa Iklan</h2>
           <p className="text-xs font-mono text-slate-500 mt-1">Periode: {formatDate(startDate)} sampai {formatDate(endDate)}</p>
+          <p className="text-xs font-mono text-slate-500 mt-1">Client: <b className="text-[#141414]">{selectedClientName}</b></p>
         </div>
 
         <div className="grid grid-cols-4 gap-4 mb-6">
@@ -372,7 +397,7 @@ export function ReportsPage() {
           </div>
         )}
         
-        {performanceEntries.length === 0 ? (
+        {filteredEntries.length === 0 ? (
           <p className="text-center text-xs font-mono text-slate-400">Belum ada data performa pada periode ini.</p>
         ) : (
           <div className="space-y-6">
@@ -395,7 +420,7 @@ export function ReportsPage() {
                 </thead>
                 <tbody>
                   {visibleActivities.map(activity => {
-                    const activityTotals = aggregateEntries(performanceEntries.filter(entry => entry.activity_id === activity.id));
+                    const activityTotals = aggregateEntries(filteredEntries.filter(entry => entry.activity_id === activity.id));
                     return (
                       <tr key={activity.id} className="border-b border-slate-200">
                         <td className="p-2 border-x border-slate-200 font-bold">{activity.title}</td>
@@ -436,7 +461,7 @@ export function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {performanceEntries.map((entry, idx) => {
+                  {filteredEntries.map((entry, idx) => {
                     const activity = activityMap[entry.activity_id];
                     const entryTotals = aggregateEntries([entry]);
                     return (
@@ -486,7 +511,7 @@ export function ReportsPage() {
       </div>
 
       {/* FILTER CONTROLS (Hidden during print) */}
-      <div id="report-controls" className="bg-white p-5 border border-[#141414]/15 grid grid-cols-1 md:grid-cols-4 gap-4 print:hidden">
+      <div id="report-controls" className="bg-white p-5 border border-[#141414]/15 grid grid-cols-1 md:grid-cols-5 gap-4 print:hidden">
         <div>
           <label className="block text-[9.5px] uppercase font-bold font-mono text-slate-500 mb-1.5">Report Type</label>
           <select 
@@ -517,6 +542,21 @@ export function ReportsPage() {
             className="w-full p-2.5 border border-slate-200 bg-slate-50 text-xs font-mono font-bold focus:border-[#141414] outline-none"
           />
         </div>
+        {reportType === 'ads' && (
+          <div>
+            <label className="block text-[9.5px] uppercase font-bold font-mono text-slate-500 mb-1.5">Client</label>
+            <select
+              value={selectedClientId}
+              onChange={(e) => setSelectedClientId(e.target.value)}
+              className="w-full p-2.5 border border-slate-200 bg-slate-50 text-xs font-mono font-bold focus:border-[#141414] outline-none"
+            >
+              <option value="All">Semua Client</option>
+              {clients.map(client => (
+                <option key={client.id} value={client.id}>{client.company_name}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="flex items-end">
           <button 
             onClick={handleGenerateReport}
