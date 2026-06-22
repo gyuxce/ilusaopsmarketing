@@ -92,6 +92,18 @@ export interface MarketingActivity {
   ads_name?: string | null;
   targeting?: string | null;
   result_type?: string;
+  objective?: string | null;
+  platform?: string | null;
+  ad_format?: string | null;
+  interest_segment?: string | null;
+  audience_location?: string | null;
+  age_range?: string | null;
+  daily_budget?: number;
+  benchmark_cpl?: number;
+  status_reason?: string | null;
+  participants_webinar?: number;
+  participants_mapping?: number;
+  participants_interview?: number;
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;

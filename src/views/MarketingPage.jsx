@@ -33,7 +33,7 @@ import { useToast, useConfirm } from '../context/AppContext';
 import { SkeletonCard, SkeletonList } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 
-const COLUMNS = ['Date', 'Spend', 'Reach', 'Impressions', 'Clicks', 'Results', 'CTR', 'CPR', 'Notes', 'Actions'];
+const COLUMNS = ['Date', 'Spend', 'Reach', 'Impressions', 'Clicks', 'Results', 'CTR', 'CPL', 'CPM', 'CPC', 'Freq.', 'Notes', 'Actions'];
 
 const STATUS_COLORS = {
   Active: 'bg-emerald-50 border-emerald-500 text-emerald-800 font-extrabold',
@@ -44,6 +44,10 @@ const STATUS_COLORS = {
 };
 
 const PRESET_RESULT_TYPES = ['Leads', 'WhatsApp Chats', 'Purchases', 'Link Clicks', 'Video Views', 'App Installs'];
+const PRESET_OBJECTIVES = ['Leads Form Objective', 'Leads', 'Traffic', 'Engagement', 'Awareness', 'Conversions'];
+const PRESET_PLATFORMS = ['Meta Ads', 'Instagram', 'Facebook', 'TikTok Ads', 'Google Ads'];
+const PRESET_AD_FORMATS = ['Creative Ads', 'Carousel Ads', 'Single Image', 'Video', 'Reels', 'Flyer'];
+const PRESET_INTEREST_SEGMENTS = ['Interest Jepang', 'Interest Kerja', 'Job Interview', 'Konstruksi', 'Broad', 'Retargeting'];
 
 const sanitizeMoneyToNumber = (val) => {
   if (!val) return 0;
@@ -208,6 +212,7 @@ export function MarketingPage({ activityType }) {
   // Filter States
   const [clientFilter, setClientFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [reportScope, setReportScope] = useState('project');
 
   // Loading and Error States
   const [loading, setLoading] = useState(true);
@@ -240,6 +245,18 @@ export function MarketingPage({ activityType }) {
   const [fAdsName, setFAdsName] = useState('');
   const [fTargeting, setFTargeting] = useState('');
   const [fResultType, setFResultType] = useState('Leads');
+  const [fObjective, setFObjective] = useState('Leads Form Objective');
+  const [fPlatform, setFPlatform] = useState('Meta Ads');
+  const [fAdFormat, setFAdFormat] = useState('Creative Ads');
+  const [fInterestSegment, setFInterestSegment] = useState('');
+  const [fAudienceLocation, setFAudienceLocation] = useState('');
+  const [fAgeRange, setFAgeRange] = useState('');
+  const [fDailyBudget, setFDailyBudget] = useState('');
+  const [fBenchmarkCpl, setFBenchmarkCpl] = useState('1500');
+  const [fStatusReason, setFStatusReason] = useState('');
+  const [fParticipantsWebinar, setFParticipantsWebinar] = useState('');
+  const [fParticipantsMapping, setFParticipantsMapping] = useState('');
+  const [fParticipantsInterview, setFParticipantsInterview] = useState('');
 
   // Performance Entry Form fields
   const [fpDate, setFpDate] = useState(getLocalDateString);
@@ -394,6 +411,18 @@ export function MarketingPage({ activityType }) {
     setFAdsName('');
     setFTargeting('');
     setFResultType('Leads');
+    setFObjective('Leads Form Objective');
+    setFPlatform('Meta Ads');
+    setFAdFormat('Creative Ads');
+    setFInterestSegment('');
+    setFAudienceLocation('');
+    setFAgeRange('');
+    setFDailyBudget('');
+    setFBenchmarkCpl('1500');
+    setFStatusReason('');
+    setFParticipantsWebinar('');
+    setFParticipantsMapping('');
+    setFParticipantsInterview('');
     setIsActModalOpen(true);
   };
 
@@ -412,6 +441,18 @@ export function MarketingPage({ activityType }) {
     setFAdsName(act.ads_name || '');
     setFTargeting(act.targeting || '');
     setFResultType(act.result_type || 'Leads');
+    setFObjective(act.objective || 'Leads Form Objective');
+    setFPlatform(act.platform || act.channel || 'Meta Ads');
+    setFAdFormat(act.ad_format || 'Creative Ads');
+    setFInterestSegment(act.interest_segment || '');
+    setFAudienceLocation(act.audience_location || '');
+    setFAgeRange(act.age_range || '');
+    setFDailyBudget(act.daily_budget || '');
+    setFBenchmarkCpl(act.benchmark_cpl || '1500');
+    setFStatusReason(act.status_reason || '');
+    setFParticipantsWebinar(act.participants_webinar || '');
+    setFParticipantsMapping(act.participants_mapping || '');
+    setFParticipantsInterview(act.participants_interview || '');
     setIsActModalOpen(true);
   };
 
@@ -442,6 +483,18 @@ export function MarketingPage({ activityType }) {
       ads_name: fAdsName || null,
       targeting: fTargeting || null,
       result_type: fResultType || 'Leads',
+      objective: fObjective || null,
+      platform: fPlatform || fChannel || null,
+      ad_format: fAdFormat || null,
+      interest_segment: fInterestSegment || null,
+      audience_location: fAudienceLocation || null,
+      age_range: fAgeRange || null,
+      daily_budget: sanitizeMoneyToNumber(fDailyBudget),
+      benchmark_cpl: sanitizeMoneyToNumber(fBenchmarkCpl),
+      status_reason: fStatusReason || null,
+      participants_webinar: sanitizeMoneyToNumber(fParticipantsWebinar),
+      participants_mapping: sanitizeMoneyToNumber(fParticipantsMapping),
+      participants_interview: sanitizeMoneyToNumber(fParticipantsInterview),
       start_date: fStartDate,
       end_date: fEndDate,
       status: fStatus,
@@ -632,6 +685,12 @@ export function MarketingPage({ activityType }) {
             const adsName = getCSVFieldValue(firstRow, ['Ads', 'Ads name', 'Ad name', 'Varian Iklan', 'Varian', 'Nama Iklan']) || null;
             const targeting = getCSVFieldValue(firstRow, ['Targeting', 'Targeting details', 'Target']) || null;
             const resultType = getCSVFieldValue(firstRow, ['Result type', 'Result name', 'Tipe Hasil']) || 'Leads';
+            const objective = getCSVFieldValue(firstRow, ['Objective', 'Tujuan']) || 'Leads Form Objective';
+            const platform = getCSVFieldValue(firstRow, ['Platform', 'Placement']) || defaultChannel;
+            const adFormat = getCSVFieldValue(firstRow, ['Ad format', 'Format', 'Creative format']) || 'Creative Ads';
+            const interestSegment = getCSVFieldValue(firstRow, ['Interest', 'Segment', 'Interest segment']) || null;
+            const audienceLocation = getCSVFieldValue(firstRow, ['Location', 'Lokasi', 'Area']) || null;
+            const ageRange = getCSVFieldValue(firstRow, ['Age', 'Usia', 'Age range']) || null;
 
             let minDateStr = null;
             let maxDateStr = null;
@@ -662,6 +721,18 @@ export function MarketingPage({ activityType }) {
               ads_name: adsName,
               targeting: targeting,
               result_type: resultType,
+              objective,
+              platform,
+              ad_format: adFormat,
+              interest_segment: interestSegment,
+              audience_location: audienceLocation,
+              age_range: ageRange,
+              daily_budget: 0,
+              benchmark_cpl: 1500,
+              status_reason: null,
+              participants_webinar: 0,
+              participants_mapping: 0,
+              participants_interview: 0,
               start_date: startDate,
               end_date: endDate,
               status: 'Active',
@@ -753,6 +824,50 @@ export function MarketingPage({ activityType }) {
     
     return { spend, results };
   };
+
+  const aggregateEntries = (entries) => {
+    const spend = entries.reduce((sum, item) => sum + Number(item.spend || 0), 0);
+    const reach = entries.reduce((sum, item) => sum + Number(item.reach || 0), 0);
+    const impressions = entries.reduce((sum, item) => sum + Number(item.impressions || 0), 0);
+    const clicks = entries.reduce((sum, item) => sum + Number(item.clicks || 0), 0);
+    const results = entries.reduce((sum, item) => sum + Number(item.results || 0), 0);
+
+    return {
+      spend,
+      reach,
+      impressions,
+      clicks,
+      results,
+      ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+      cpl: results > 0 ? spend / results : 0,
+      cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+      cpc: clicks > 0 ? spend / clicks : 0,
+      frequency: reach > 0 ? impressions / reach : 0,
+    };
+  };
+
+  const getReportActivities = () => {
+    if (!selectedActivity) return [];
+    if (reportScope === 'campaign') return [selectedActivity];
+    if (reportScope === 'project' && selectedActivity.project_id) {
+      return activities.filter(act => act.project_id === selectedActivity.project_id);
+    }
+    return activities.filter(act => act.client_id === selectedActivity.client_id);
+  };
+
+  const reportActivities = getReportActivities();
+  const reportActivityIds = new Set(reportActivities.map(act => act.id));
+  const reportEntries = allPerformanceEntries.filter(entry => reportActivityIds.has(entry.activity_id));
+  const reportTotals = aggregateEntries(reportEntries);
+  const reportFunnel = reportActivities.reduce((acc, act) => ({
+    webinar: acc.webinar + Number(act.participants_webinar || 0),
+    mapping: acc.mapping + Number(act.participants_mapping || 0),
+    interview: acc.interview + Number(act.participants_interview || 0),
+  }), { webinar: 0, mapping: 0, interview: 0 });
+  const reportBenchmark = reportActivities.find(act => Number(act.benchmark_cpl || 0) > 0)?.benchmark_cpl || 1500;
+  const reportBenchmarkDelta = Number(reportBenchmark) > 0 && reportTotals.cpl > 0
+    ? ((Number(reportBenchmark) - reportTotals.cpl) / Number(reportBenchmark)) * 100
+    : 0;
 
   // Calculate detailed aggregations for SELECTED activity
   const currentTotalSpend = performanceEntries.reduce((sum, entry) => sum + Number(entry.spend || 0), 0);
@@ -969,8 +1084,19 @@ export function MarketingPage({ activityType }) {
                       </div>
                     </div>
 
+                    {(act.interest_segment || act.ad_format) && (
+                      <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[8px] uppercase text-slate-500">
+                        {act.interest_segment && (
+                          <span className="border border-slate-200 bg-slate-50 px-1.5 py-0.5">{act.interest_segment}</span>
+                        )}
+                        {act.ad_format && (
+                          <span className="border border-slate-200 bg-slate-50 px-1.5 py-0.5">{act.ad_format}</span>
+                        )}
+                      </div>
+                    )}
+
                     {/* Quick Summarized KPIs */}
-                    <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-center text-[10px] font-mono">
+                    <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-[10px] font-mono">
                       <div>
                         <span className="text-slate-400 text-[8px] uppercase block mb-1">Total Spend</span>
                         <span className="font-extrabold text-[#141414]">{formatMoney(stats.spend)}</span>
@@ -980,6 +1106,10 @@ export function MarketingPage({ activityType }) {
                           Results ({act.result_type || 'Leads'})
                         </span>
                         <span className="font-bold text-slate-700">{stats.results}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[8px] uppercase block mb-1">CPL</span>
+                        <span className="font-bold text-orange-800">{formatMoney(stats.results > 0 ? stats.spend / stats.results : 0)}</span>
                       </div>
                     </div>
 
@@ -1045,6 +1175,22 @@ export function MarketingPage({ activityType }) {
                     <b>Targeting:</b> {selectedActivity.targeting}
                   </p>
                 )}
+                <div className="flex flex-wrap gap-1.5 pt-1 font-mono text-[8.5px] uppercase text-slate-500">
+                  {(selectedActivity.objective || selectedActivity.platform) && (
+                    <span className="border border-slate-200 bg-slate-50 px-1.5 py-0.5">
+                      {selectedActivity.objective || 'Objective'} / {selectedActivity.platform || selectedActivity.channel}
+                    </span>
+                  )}
+                  {selectedActivity.ad_format && (
+                    <span className="border border-slate-200 bg-slate-50 px-1.5 py-0.5">{selectedActivity.ad_format}</span>
+                  )}
+                  {selectedActivity.interest_segment && (
+                    <span className="border border-orange-200 bg-orange-50 text-orange-700 px-1.5 py-0.5">{selectedActivity.interest_segment}</span>
+                  )}
+                  {selectedActivity.status_reason && (
+                    <span className="border border-slate-200 bg-slate-50 px-1.5 py-0.5">{selectedActivity.status_reason}</span>
+                  )}
+                </div>
               </div>
 
               <div className="text-right">
@@ -1078,6 +1224,126 @@ export function MarketingPage({ activityType }) {
                 <span className="text-slate-400 text-[9px] block">Cost Per Result (CPR)</span>
                 <div className="text-sm font-extrabold text-orange-800 mt-1">
                   {formatMoney(currentAverageCPR)}
+                </div>
+              </div>
+            </div>
+
+            {/* REPORT SUMMARY - CAN INCLUDE ALL CAMPAIGNS IN PROJECT/CLIENT */}
+            <div className="border border-[#141414]/15 bg-white">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#141414]/10 bg-slate-50 p-4">
+                <div>
+                  <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-[#141414]">
+                    Ads Report Summary
+                  </h3>
+                  <p className="text-[9px] text-slate-500 font-mono uppercase mt-0.5">
+                    Showing {reportActivities.length} campaign{reportActivities.length === 1 ? '' : 's'} and {reportEntries.length} performance log{reportEntries.length === 1 ? '' : 's'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1 bg-white border border-[#141414]/15 p-1 font-mono text-[9px] uppercase">
+                  {['campaign', 'project', 'client'].map(scope => (
+                    <button
+                      key={scope}
+                      type="button"
+                      onClick={() => setReportScope(scope)}
+                      className={`px-2.5 py-1 font-bold cursor-pointer transition-colors ${
+                        reportScope === scope ? 'bg-[#141414] text-white' : 'text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      {scope}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 font-mono uppercase text-[10px]">
+                  <div className="border border-slate-200 p-3 bg-slate-50">
+                    <span className="text-slate-400 text-[8px] block">Total Leads</span>
+                    <strong className="text-sm text-[#141414]">{reportTotals.results.toLocaleString()}</strong>
+                  </div>
+                  <div className="border border-slate-200 p-3 bg-slate-50">
+                    <span className="text-slate-400 text-[8px] block">Total Spent</span>
+                    <strong className="text-sm text-[#141414]">{formatMoney(reportTotals.spend)}</strong>
+                  </div>
+                  <div className="border border-slate-200 p-3 bg-slate-50">
+                    <span className="text-slate-400 text-[8px] block">Avg. CPL</span>
+                    <strong className="text-sm text-orange-800">{formatMoney(reportTotals.cpl)}</strong>
+                  </div>
+                  <div className="border border-slate-200 p-3 bg-slate-50">
+                    <span className="text-slate-400 text-[8px] block">CTR / CPC</span>
+                    <strong className="text-sm text-blue-700">{reportTotals.ctr.toFixed(2)}% / {formatMoney(reportTotals.cpc)}</strong>
+                  </div>
+                  <div className="border border-slate-200 p-3 bg-slate-50">
+                    <span className="text-slate-400 text-[8px] block">CPM / Freq.</span>
+                    <strong className="text-sm text-slate-800">{formatMoney(reportTotals.cpm)} / {reportTotals.frequency.toFixed(2)}x</strong>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 font-mono uppercase text-[10px]">
+                  <div className="border border-orange-200 bg-orange-50 p-3">
+                    <span className="text-orange-700/70 text-[8px] block">Benchmark CPL</span>
+                    <strong className="text-sm text-orange-900">{formatMoney(reportBenchmark)}</strong>
+                  </div>
+                  <div className="border border-slate-200 bg-white p-3">
+                    <span className="text-slate-400 text-[8px] block">Peserta Webinar</span>
+                    <strong className="text-sm text-[#141414]">{reportFunnel.webinar.toLocaleString()}</strong>
+                  </div>
+                  <div className="border border-slate-200 bg-white p-3">
+                    <span className="text-slate-400 text-[8px] block">Peserta Pemetaan</span>
+                    <strong className="text-sm text-[#141414]">{reportFunnel.mapping.toLocaleString()}</strong>
+                  </div>
+                  <div className="border border-slate-200 bg-white p-3">
+                    <span className="text-slate-400 text-[8px] block">Peserta Interview</span>
+                    <strong className="text-sm text-[#141414]">{reportFunnel.interview.toLocaleString()}</strong>
+                  </div>
+                </div>
+
+                <div className="bg-[#141414] text-white p-3 font-mono text-[10px] uppercase flex flex-wrap gap-3 justify-between">
+                  <span>
+                    CPL status: <b className={reportBenchmarkDelta >= 0 ? 'text-emerald-300' : 'text-rose-300'}>
+                      {reportTotals.cpl > 0
+                        ? `${Math.abs(reportBenchmarkDelta).toFixed(0)}% ${reportBenchmarkDelta >= 0 ? 'lebih hemat' : 'di atas'} benchmark`
+                        : 'Belum ada data lead'}
+                    </b>
+                  </span>
+                  <span>
+                    Funnel final: <b>{reportTotals.results > 0 ? ((reportFunnel.interview / reportTotals.results) * 100).toFixed(1) : '0.0'}%</b> leads ke interview
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-200">
+                  <table className="w-full text-left border-collapse font-mono text-[9px] uppercase">
+                    <thead className="bg-slate-100 text-slate-500">
+                      <tr>
+                        <th className="p-2">Campaign</th>
+                        <th className="p-2">Segment</th>
+                        <th className="p-2 text-right">Spend</th>
+                        <th className="p-2 text-right">Leads</th>
+                        <th className="p-2 text-right">CPL</th>
+                        <th className="p-2 text-right">Webinar</th>
+                        <th className="p-2 text-right">Pemetaan</th>
+                        <th className="p-2 text-right">Interview</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {reportActivities.map(act => {
+                        const actTotals = aggregateEntries(allPerformanceEntries.filter(entry => entry.activity_id === act.id));
+                        return (
+                          <tr key={act.id} className="bg-white">
+                            <td className="p-2 font-bold text-[#141414]">{act.title}</td>
+                            <td className="p-2 text-slate-500">{act.interest_segment || act.ad_format || '-'}</td>
+                            <td className="p-2 text-right">{formatMoney(actTotals.spend)}</td>
+                            <td className="p-2 text-right">{actTotals.results.toLocaleString()}</td>
+                            <td className="p-2 text-right text-orange-800">{formatMoney(actTotals.cpl)}</td>
+                            <td className="p-2 text-right">{Number(act.participants_webinar || 0).toLocaleString()}</td>
+                            <td className="p-2 text-right">{Number(act.participants_mapping || 0).toLocaleString()}</td>
+                            <td className="p-2 text-right">{Number(act.participants_interview || 0).toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -1322,6 +1588,9 @@ export function MarketingPage({ activityType }) {
                         // calculated stats on each entry row
                         const ctr = entry.impressions > 0 ? (entry.clicks / entry.impressions) * 100 : 0;
                         const cpr = entry.results > 0 ? (entry.spend / entry.results) : 0;
+                        const cpm = entry.impressions > 0 ? (entry.spend / entry.impressions) * 1000 : 0;
+                        const cpc = entry.clicks > 0 ? (entry.spend / entry.clicks) : 0;
+                        const frequency = entry.reach > 0 ? (entry.impressions / entry.reach) : 0;
 
                         return (
                           <tr key={entry.id} className="hover:bg-slate-50 transition-colors text-center font-mono">
@@ -1348,6 +1617,15 @@ export function MarketingPage({ activityType }) {
                             </td>
                             <td className="p-2 text-orange-800">
                               {formatMoney(cpr)}
+                            </td>
+                            <td className="p-2 text-slate-700">
+                              {formatMoney(cpm)}
+                            </td>
+                            <td className="p-2 text-slate-700">
+                              {formatMoney(cpc)}
+                            </td>
+                            <td className="p-2 text-slate-500">
+                              {frequency.toFixed(2)}x
                             </td>
                             <td className="p-2 max-w-[150px] truncate text-slate-400 text-[9px] text-left" title={entry.notes}>
                               {entry.notes || '-'}
@@ -1431,7 +1709,7 @@ export function MarketingPage({ activityType }) {
       {/* -------------------- 1. MODAL: CREATE / MODIFY ACTIVITY -------------------- */}
       {isActModalOpen && (
         <div className="fixed inset-0 z-50 bg-[#141414]/60 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#141414] w-full max-w-lg shadow-lg">
+          <div className="bg-white border border-[#141414] w-full max-w-3xl shadow-lg max-h-[92vh] overflow-y-auto">
             
             {/* Heading */}
             <div className="bg-[#141414] text-white px-5 py-4 flex items-center justify-between">
@@ -1497,7 +1775,10 @@ export function MarketingPage({ activityType }) {
                   <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Active Channel</label>
                   <select
                     value={fChannel}
-                    onChange={(e) => setFChannel(e.target.value)}
+                    onChange={(e) => {
+                      setFChannel(e.target.value);
+                      setFPlatform(e.target.value);
+                    }}
                     className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none"
                   >
                     <option value="Meta Ads">Meta Ads</option>
@@ -1519,6 +1800,61 @@ export function MarketingPage({ activityType }) {
                     onChange={(e) => setFBudget(e.target.value)}
                     className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Objective</label>
+                  <select
+                    value={fObjective}
+                    onChange={(e) => setFObjective(e.target.value)}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
+                  >
+                    {PRESET_OBJECTIVES.map(item => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Platform</label>
+                  <select
+                    value={fPlatform}
+                    onChange={(e) => setFPlatform(e.target.value)}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
+                  >
+                    {PRESET_PLATFORMS.map(item => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Ad Format</label>
+                  <select
+                    value={fAdFormat}
+                    onChange={(e) => setFAdFormat(e.target.value)}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
+                  >
+                    {PRESET_AD_FORMATS.map(item => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Interest Segment</label>
+                  <select
+                    value={fInterestSegment}
+                    onChange={(e) => setFInterestSegment(e.target.value)}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
+                  >
+                    <option value="">-- Optional --</option>
+                    {PRESET_INTEREST_SEGMENTS.map(item => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1577,6 +1913,106 @@ export function MarketingPage({ activityType }) {
                   rows={2}
                   className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none placeholder:text-slate-400 font-mono text-[10px]"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Location</label>
+                  <input
+                    type="text"
+                    placeholder="Bandung + radius STBA"
+                    value={fAudienceLocation}
+                    onChange={(e) => setFAudienceLocation(e.target.value)}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Age Range</label>
+                  <input
+                    type="text"
+                    placeholder="20-35"
+                    value={fAgeRange}
+                    onChange={(e) => setFAgeRange(e.target.value)}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Daily Budget</label>
+                  <input
+                    type="text"
+                    placeholder="50.000"
+                    value={fDailyBudget}
+                    onChange={(e) => setFDailyBudget(e.target.value)}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Benchmark CPL</label>
+                  <input
+                    type="text"
+                    placeholder="1.500"
+                    value={fBenchmarkCpl}
+                    onChange={(e) => setFBenchmarkCpl(e.target.value)}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Status Reason</label>
+                  <input
+                    type="text"
+                    placeholder="A/B Test kalah"
+                    value={fStatusReason}
+                    onChange={(e) => setFStatusReason(e.target.value)}
+                    className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="border border-orange-200 bg-orange-50/60 p-3 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-mono text-[10px] font-black uppercase text-orange-900">Harunokaze Funnel</h4>
+                    <p className="font-mono text-[8px] uppercase text-orange-700/70">Optional. Leave blank for non-Harunokaze projects.</p>
+                  </div>
+                  <Briefcase className="h-4 w-4 text-orange-700" />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Peserta Webinar</label>
+                    <input
+                      type="text"
+                      placeholder="0"
+                      value={fParticipantsWebinar}
+                      onChange={(e) => setFParticipantsWebinar(e.target.value)}
+                      className="w-full p-2 border border-orange-200 focus:border-orange-600 bg-white rounded-none text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Peserta Pemetaan</label>
+                    <input
+                      type="text"
+                      placeholder="0"
+                      value={fParticipantsMapping}
+                      onChange={(e) => setFParticipantsMapping(e.target.value)}
+                      className="w-full p-2 border border-orange-200 focus:border-orange-600 bg-white rounded-none text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Peserta Interview</label>
+                    <input
+                      type="text"
+                      placeholder="0"
+                      value={fParticipantsInterview}
+                      onChange={(e) => setFParticipantsInterview(e.target.value)}
+                      className="w-full p-2 border border-orange-200 focus:border-orange-600 bg-white rounded-none text-xs"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">

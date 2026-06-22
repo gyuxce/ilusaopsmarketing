@@ -180,6 +180,18 @@ CREATE TABLE public.marketing_activities (
   ads_name      text,
   targeting     text,
   result_type   text        NOT NULL DEFAULT 'Leads',
+  objective     text,
+  platform      text,
+  ad_format     text,
+  interest_segment text,
+  audience_location text,
+  age_range     text,
+  daily_budget  numeric     NOT NULL DEFAULT 0 CHECK (daily_budget >= 0),
+  benchmark_cpl numeric     NOT NULL DEFAULT 1500 CHECK (benchmark_cpl >= 0),
+  status_reason text,
+  participants_webinar integer NOT NULL DEFAULT 0 CHECK (participants_webinar >= 0),
+  participants_mapping integer NOT NULL DEFAULT 0 CHECK (participants_mapping >= 0),
+  participants_interview integer NOT NULL DEFAULT 0 CHECK (participants_interview >= 0),
   created_at    timestamptz NOT NULL DEFAULT timezone('utc', now()),
   updated_at    timestamptz NOT NULL DEFAULT timezone('utc', now()),
   deleted_at    timestamptz DEFAULT NULL,
@@ -194,6 +206,8 @@ CREATE INDEX idx_marketing_activities_client_id  ON public.marketing_activities(
 CREATE INDEX idx_marketing_activities_project_id ON public.marketing_activities(project_id);
 CREATE INDEX idx_marketing_activities_owner_id   ON public.marketing_activities(owner_id);
 CREATE INDEX idx_marketing_activities_deleted_at ON public.marketing_activities(deleted_at);
+CREATE INDEX idx_marketing_activities_platform   ON public.marketing_activities(platform);
+CREATE INDEX idx_marketing_activities_interest_segment ON public.marketing_activities(interest_segment);
 
 -- ============================================================
 -- TABLE 6: work_items
