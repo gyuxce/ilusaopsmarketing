@@ -33,7 +33,7 @@ import { useToast, useConfirm } from '../context/AppContext';
 import { SkeletonCard, SkeletonList } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 
-const COLUMNS = ['Date', 'Spend', 'Reach', 'Impressions', 'Clicks', 'Results', 'CTR', 'CPL', 'CPM', 'CPC', 'Freq.', 'Notes', 'Actions'];
+const COLUMNS = ['Tanggal', 'Biaya', 'Reach', 'Impressions', 'Clicks', 'Leads', 'CTR', 'CPL', 'CPM', 'CPC', 'Freq.', 'Catatan', 'Aksi'];
 
 const STATUS_COLORS = {
   Active: 'bg-emerald-50 border-emerald-500 text-emerald-800 font-extrabold',
@@ -48,6 +48,17 @@ const PRESET_OBJECTIVES = ['Leads Form Objective', 'Leads', 'Traffic', 'Engageme
 const PRESET_PLATFORMS = ['Meta Ads', 'Instagram', 'Facebook', 'TikTok Ads', 'Google Ads'];
 const PRESET_AD_FORMATS = ['Creative Ads', 'Carousel Ads', 'Single Image', 'Video', 'Reels', 'Flyer'];
 const PRESET_INTEREST_SEGMENTS = ['Interest Jepang', 'Interest Kerja', 'Job Interview', 'Konstruksi', 'Broad', 'Retargeting'];
+
+const getKpiWarnings = ({ ctr, cpc, cpl, frequency, clicks, impressions, reach }) => {
+  const warnings = [];
+  if (impressions > 0 && clicks > impressions) warnings.push('Klik lebih besar dari impressions. Cek ulang input clicks atau impressions.');
+  if (reach > 0 && impressions > 0 && reach > impressions) warnings.push('Reach lebih besar dari impressions. Biasanya impressions minimal sama atau lebih besar dari reach.');
+  if (ctr > 10) warnings.push('CTR di atas 10%. Rumusnya benar, tapi angkanya tidak umum untuk ads. Cek apakah impressions sudah sesuai.');
+  if (frequency > 5) warnings.push('Frequency di atas 5x. Audiens mungkin mulai terlalu sering melihat iklan.');
+  if (cpl > 0 && cpl < 500) warnings.push('CPL sangat rendah. Pastikan angka leads dan spend sudah benar.');
+  if (cpc > 0 && cpc < 100) warnings.push('CPC sangat rendah. Pastikan angka clicks dan spend tidak tertukar.');
+  return warnings;
+};
 
 const sanitizeMoneyToNumber = (val) => {
   if (!val) return 0;
@@ -278,11 +289,11 @@ export function MarketingPage({ activityType }) {
     switch (activityType) {
       case 'campaign':
         return {
-          title: 'Paid Ads campaigns',
-          subtitle: 'Execute budgets & target audience sets across active channels',
-          addBtn: 'Create Campaign',
-          editTitle: 'Modify Campaign Activity',
-          createTitle: 'Design Ads Campaign'
+          title: 'Laporan Iklan',
+          subtitle: 'Pantau performa campaign, biaya leads, dan funnel peserta dalam satu tempat.',
+          addBtn: 'Buat Campaign',
+          editTitle: 'Edit Detail Campaign',
+          createTitle: 'Setup Campaign Iklan'
         };
       case 'creative_test':
         return {
@@ -302,11 +313,11 @@ export function MarketingPage({ activityType }) {
         };
       default:
         return {
-          title: 'Marketing Sprints',
-          subtitle: 'Active tactical sprint tracks',
-          addBtn: 'Add Activity',
-          editTitle: 'Edit Activity',
-          createTitle: 'Create Activity'
+          title: 'Laporan Iklan',
+          subtitle: 'Pantau performa campaign, biaya leads, dan funnel peserta dalam satu tempat.',
+          addBtn: 'Buat Campaign',
+          editTitle: 'Edit Campaign',
+          createTitle: 'Setup Campaign'
         };
     }
   };
@@ -868,6 +879,7 @@ export function MarketingPage({ activityType }) {
   const reportBenchmarkDelta = Number(reportBenchmark) > 0 && reportTotals.cpl > 0
     ? ((Number(reportBenchmark) - reportTotals.cpl) / Number(reportBenchmark)) * 100
     : 0;
+  const reportWarnings = getKpiWarnings(reportTotals);
 
   // Calculate detailed aggregations for SELECTED activity
   const currentTotalSpend = performanceEntries.reduce((sum, entry) => sum + Number(entry.spend || 0), 0);
@@ -877,6 +889,8 @@ export function MarketingPage({ activityType }) {
 
   const currentAverageCTR = currentTotalImpressions > 0 ? (currentTotalClicks / currentTotalImpressions) * 100 : 0;
   const currentAverageCPR = currentTotalResults > 0 ? (currentTotalSpend / currentTotalResults) : 0;
+  const currentTotals = aggregateEntries(performanceEntries);
+  const currentWarnings = getKpiWarnings(currentTotals);
 
   // Group performance entries into Weekly buckets as required ("Hitung dan tampilkan agregasi mingguan: total spend, total results, average ROAS.")
   const getWeeklyAggregations = () => {
@@ -966,19 +980,19 @@ export function MarketingPage({ activityType }) {
       <div className="bg-white border border-[#141414]/15 p-4 md:flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-slate-500 font-mono text-[10px] uppercase">
           <SlidersHorizontal className="h-4 w-4 text-orange-600" />
-          <span>Search & Filters</span>
+          <span>Filter Laporan</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-4 text-xs font-mono">
           {/* Client select filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-slate-400 text-[10px]">Company Profile:</span>
+            <span className="text-slate-400 text-[10px]">Client:</span>
             <select
               value={clientFilter}
               onChange={(e) => setClientFilter(e.target.value)}
               className="py-1 px-2 border border-[#141414]/15 bg-slate-50 focus:border-[#141414] font-bold text-[#141414] rounded-none outline-none cursor-pointer"
             >
-              <option value="All">All Clients</option>
+              <option value="All">Semua Client</option>
               {clients.map(c => (
                 <option key={c.id} value={c.id}>{c.company_name}</option>
               ))}
@@ -987,13 +1001,13 @@ export function MarketingPage({ activityType }) {
 
           {/* Status select filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-slate-400 text-[10px]">Track Status:</span>
+            <span className="text-slate-400 text-[10px]">Status:</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="py-1 px-2 border border-[#141414]/15 bg-slate-50 focus:border-[#141414] font-bold text-[#141414] rounded-none outline-none cursor-pointer"
             >
-              <option value="All">All Statuses</option>
+              <option value="All">Semua Status</option>
               <option value="Active">Active</option>
               <option value="Paused">Paused</option>
               <option value="Completed">Completed</option>
@@ -1011,10 +1025,10 @@ export function MarketingPage({ activityType }) {
         <div className={`${selectedActivity ? 'lg:col-span-4' : 'lg:col-span-12'} space-y-4`}>
           <div className="flex items-center justify-between bg-[#141414]/5 p-3 border border-[#141414]/15">
             <h3 className="text-xs font-bold font-mono text-[#141414] uppercase tracking-wider">
-              Tactical Sprint Items ({filteredActivities.length})
+              Daftar Campaign ({filteredActivities.length})
             </h3>
             {selectedActivity && (
-              <span className="text-[10px] text-slate-500 font-mono">Click a card to load entries detail</span>
+              <span className="text-[10px] text-slate-500 font-mono">Klik campaign untuk melihat detail performa</span>
             )}
           </div>
 
@@ -1027,9 +1041,9 @@ export function MarketingPage({ activityType }) {
           ) : filteredActivities.length === 0 ? (
             <EmptyState
               icon={Activity}
-              title="No Activities Tracked"
-              description="No marketing operations match the chosen parameters under this channel. You can add ad campaigns, testing sprints, or content tracks."
-              actionText="Add operational track"
+              title="Belum Ada Campaign"
+              description="Tidak ada campaign yang cocok dengan filter ini. Buat campaign baru untuk mulai mencatat performa iklan."
+              actionText="Buat Campaign"
               onAction={handleOpenAddActModal}
             />
           ) : (
@@ -1074,7 +1088,7 @@ export function MarketingPage({ activityType }) {
                     {/* Date limits */}
                     <div className="mt-3 bg-slate-50 border border-slate-100 p-2 text-slate-500 font-mono text-[9px] uppercase space-y-1">
                       <div className="flex justify-between">
-                        <span>Sprint Budget</span>
+                        <span>Budget Campaign</span>
                         <strong className="text-slate-800 font-bold">{formatMoney(act.budget)}</strong>
                       </div>
                       
@@ -1098,12 +1112,12 @@ export function MarketingPage({ activityType }) {
                     {/* Quick Summarized KPIs */}
                     <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-[10px] font-mono">
                       <div>
-                        <span className="text-slate-400 text-[8px] uppercase block mb-1">Total Spend</span>
+                        <span className="text-slate-400 text-[8px] uppercase block mb-1">Total Biaya</span>
                         <span className="font-extrabold text-[#141414]">{formatMoney(stats.spend)}</span>
                       </div>
                       <div>
                         <span className="text-slate-400 text-[8px] uppercase block mb-1 truncate" title={`Results (${act.result_type || 'Leads'})`}>
-                          Results ({act.result_type || 'Leads'})
+                          Leads
                         </span>
                         <span className="font-bold text-slate-700">{stats.results}</span>
                       </div>
@@ -1150,7 +1164,7 @@ export function MarketingPage({ activityType }) {
                   className="flex items-center gap-1 text-[9.5px] font-mono text-slate-400 hover:text-[#141414] font-bold uppercase tracking-wider mb-2 bg-slate-50 border p-1 rounded-none"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
-                  <span>Exit Detail View</span>
+                  <span>Kembali ke daftar campaign</span>
                 </button>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[10px] font-mono font-bold text-orange-700 bg-orange-50 border border-orange-200 px-1.5 py-0.5 uppercase">
@@ -1198,22 +1212,22 @@ export function MarketingPage({ activityType }) {
                   {selectedActivity.status}
                 </span>
                 <p className="text-[10px] text-slate-400 font-mono mt-1.5 uppercase">
-                  Budget limit: <b className="text-slate-800">{formatMoney(selectedActivity.budget)}</b>
+                  Budget campaign: <b className="text-slate-800">{formatMoney(selectedActivity.budget)}</b>
                 </p>
               </div>
             </div>
 
-            {/* QUICK HEALTH METRICS PANEL (ROAS, CTR, CPR) */}
+            {/* QUICK HEALTH METRICS PANEL */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 border border-slate-200/60 text-xs font-mono uppercase">
               <div>
-                <span className="text-slate-400 text-[9px] block">Sum Spend Tracked</span>
+                <span className="text-slate-400 text-[9px] block">Total Biaya Tercatat</span>
                 <div className="text-sm font-extrabold text-[#141414] mt-1">
                   {formatMoney(currentTotalSpend)}
                 </div>
               </div>
 
               <div>
-                <span className="text-slate-400 text-[9px] block">Average CTR</span>
+                <span className="text-slate-400 text-[9px] block">Rata-rata CTR</span>
                 <div className="text-sm font-extrabold text-blue-700 mt-1 flex items-center gap-1">
                   {currentAverageCTR.toFixed(2)}%
                   <MousePointerClick className="h-3 w-3 text-slate-400" />
@@ -1221,22 +1235,31 @@ export function MarketingPage({ activityType }) {
               </div>
 
               <div>
-                <span className="text-slate-400 text-[9px] block">Cost Per Result (CPR)</span>
+                <span className="text-slate-400 text-[9px] block">Biaya per Lead</span>
                 <div className="text-sm font-extrabold text-orange-800 mt-1">
                   {formatMoney(currentAverageCPR)}
                 </div>
               </div>
             </div>
 
+            {currentWarnings.length > 0 && (
+              <div className="border border-amber-300 bg-amber-50 p-3 font-mono text-[10px] text-amber-900">
+                <div className="font-black uppercase mb-1">Catatan validasi data</div>
+                {currentWarnings.map((warning, idx) => (
+                  <div key={idx}>- {warning}</div>
+                ))}
+              </div>
+            )}
+
             {/* REPORT SUMMARY - CAN INCLUDE ALL CAMPAIGNS IN PROJECT/CLIENT */}
             <div className="border border-[#141414]/15 bg-white">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#141414]/10 bg-slate-50 p-4">
                 <div>
                   <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-[#141414]">
-                    Ads Report Summary
+                    Ringkasan Laporan Iklan
                   </h3>
                   <p className="text-[9px] text-slate-500 font-mono uppercase mt-0.5">
-                    Showing {reportActivities.length} campaign{reportActivities.length === 1 ? '' : 's'} and {reportEntries.length} performance log{reportEntries.length === 1 ? '' : 's'}
+                    Menampilkan {reportActivities.length} campaign dan {reportEntries.length} data performa
                   </p>
                 </div>
 
@@ -1250,7 +1273,7 @@ export function MarketingPage({ activityType }) {
                         reportScope === scope ? 'bg-[#141414] text-white' : 'text-slate-500 hover:bg-slate-100'
                       }`}
                     >
-                      {scope}
+                      {scope === 'campaign' ? 'Campaign' : scope === 'project' ? 'Project' : 'Client'}
                     </button>
                   ))}
                 </div>
@@ -1263,11 +1286,11 @@ export function MarketingPage({ activityType }) {
                     <strong className="text-sm text-[#141414]">{reportTotals.results.toLocaleString()}</strong>
                   </div>
                   <div className="border border-slate-200 p-3 bg-slate-50">
-                    <span className="text-slate-400 text-[8px] block">Total Spent</span>
+                    <span className="text-slate-400 text-[8px] block">Total Biaya</span>
                     <strong className="text-sm text-[#141414]">{formatMoney(reportTotals.spend)}</strong>
                   </div>
                   <div className="border border-slate-200 p-3 bg-slate-50">
-                    <span className="text-slate-400 text-[8px] block">Avg. CPL</span>
+                    <span className="text-slate-400 text-[8px] block">Biaya per Lead</span>
                     <strong className="text-sm text-orange-800">{formatMoney(reportTotals.cpl)}</strong>
                   </div>
                   <div className="border border-slate-200 p-3 bg-slate-50">
@@ -1301,16 +1324,25 @@ export function MarketingPage({ activityType }) {
 
                 <div className="bg-[#141414] text-white p-3 font-mono text-[10px] uppercase flex flex-wrap gap-3 justify-between">
                   <span>
-                    CPL status: <b className={reportBenchmarkDelta >= 0 ? 'text-emerald-300' : 'text-rose-300'}>
+                    Status biaya lead: <b className={reportBenchmarkDelta >= 0 ? 'text-emerald-300' : 'text-rose-300'}>
                       {reportTotals.cpl > 0
                         ? `${Math.abs(reportBenchmarkDelta).toFixed(0)}% ${reportBenchmarkDelta >= 0 ? 'lebih hemat' : 'di atas'} benchmark`
                         : 'Belum ada data lead'}
                     </b>
                   </span>
                   <span>
-                    Funnel final: <b>{reportTotals.results > 0 ? ((reportFunnel.interview / reportTotals.results) * 100).toFixed(1) : '0.0'}%</b> leads ke interview
+                    Funnel akhir: <b>{reportTotals.results > 0 ? ((reportFunnel.interview / reportTotals.results) * 100).toFixed(1) : '0.0'}%</b> leads ke interview
                   </span>
                 </div>
+
+                {reportWarnings.length > 0 && (
+                  <div className="border border-amber-300 bg-amber-50 p-3 font-mono text-[10px] text-amber-900">
+                    <div className="font-black uppercase mb-1">Hal yang perlu dicek sebelum dikirim ke client</div>
+                    {reportWarnings.map((warning, idx) => (
+                      <div key={idx}>- {warning}</div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="overflow-x-auto border border-slate-200">
                   <table className="w-full text-left border-collapse font-mono text-[9px] uppercase">
@@ -1541,7 +1573,7 @@ export function MarketingPage({ activityType }) {
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-[#141414] flex items-center gap-1.5">
                   <BarChart3 className="h-4 w-4 text-orange-600" />
-                  <span>Performance Logs Table</span>
+                  <span>Data Performa Harian</span>
                 </h3>
 
                 <div className="flex items-center gap-2">
@@ -1556,7 +1588,7 @@ export function MarketingPage({ activityType }) {
                     className="flex items-center gap-1 bg-[#141414] text-white py-1.5 px-3 hover:bg-orange-600 font-mono text-[10px] font-bold uppercase transition-all cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    <span>Log Entry</span>
+                    <span>Tambah Performa</span>
                   </button>
                 </div>
               </div>
@@ -1567,7 +1599,7 @@ export function MarketingPage({ activityType }) {
                 </div>
               ) : performanceEntries.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-[#141414]/15 bg-slate-50 font-mono text-xs text-slate-400 uppercase">
-                  No performance metrics registered for this sprint.
+                  Belum ada data performa untuk campaign ini.
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-[#141414]/15">
@@ -1576,8 +1608,8 @@ export function MarketingPage({ activityType }) {
                       <tr>
                         {COLUMNS.map(col => (
                           <th key={col} className="p-2 border border-slate-700 text-center">
-                            {col === 'Results' && selectedActivity?.result_type
-                              ? `Results (${selectedActivity.result_type})`
+                            {col === 'Leads' && selectedActivity?.result_type
+                              ? `Leads (${selectedActivity.result_type})`
                               : col}
                           </th>
                         ))}
@@ -2098,7 +2130,7 @@ export function MarketingPage({ activityType }) {
             <div className="bg-[#141414] text-white px-5 py-4 flex items-center justify-between">
               <h3 className="text-xs font-bold font-mono uppercase tracking-widest flex items-center gap-1.5">
                 <BarChart3 className="h-4 w-4 text-orange-600" />
-                <span>{editingPerfEntry ? 'Edit Performance Log' : 'Add Weekly/Daily Performance Entry'}</span>
+                    <span>{editingPerfEntry ? 'Edit Data Performa' : 'Tambah Data Performa Harian'}</span>
               </h3>
               <button 
                 onClick={() => setIsPerfModalOpen(false)}
@@ -2113,7 +2145,7 @@ export function MarketingPage({ activityType }) {
               
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Metric Date *</label>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Tanggal Data *</label>
                   <input
                     type="date"
                     value={fpDate}
@@ -2124,7 +2156,7 @@ export function MarketingPage({ activityType }) {
                 </div>
 
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Cost Spend (IDR)</label>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Biaya Iklan (IDR)</label>
                   <input
                     type="text"
                     placeholder="e.g. 1.500.000"
@@ -2172,7 +2204,7 @@ export function MarketingPage({ activityType }) {
 
               <div className="grid grid-cols-1 gap-3">
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Results ({selectedActivity?.result_type || 'Leads'})</label>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Leads / Hasil ({selectedActivity?.result_type || 'Leads'})</label>
                   <input
                     type="text"
                     placeholder="48"
@@ -2186,19 +2218,19 @@ export function MarketingPage({ activityType }) {
               {/* Auto-calculated Metrics Display */}
               <div className="bg-slate-50 p-3 border border-slate-200 flex items-center justify-between font-mono text-[9px] uppercase">
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Calc. CTR</span>
+                  <span className="text-slate-400 block mb-0.5">Estimasi CTR</span>
                   <strong className="text-blue-700">
                     {(Number(fpImpressions) > 0 ? (Number(fpClicks) / Number(fpImpressions)) * 100 : 0).toFixed(2)}%
                   </strong>
                 </div>
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Calc. CPC</span>
+                  <span className="text-slate-400 block mb-0.5">Estimasi CPC</span>
                   <strong className="text-slate-800">
                     {formatMoney(Number(fpClicks) > 0 ? (Number(fpSpend) / Number(fpClicks)) : 0)}
                   </strong>
                 </div>
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Calc. CPL/CPR</span>
+                  <span className="text-slate-400 block mb-0.5">Estimasi CPL</span>
                   <strong className="text-orange-800">
                     {formatMoney(Number(fpResults) > 0 ? (Number(fpSpend) / Number(fpResults)) : 0)}
                   </strong>
@@ -2206,7 +2238,7 @@ export function MarketingPage({ activityType }) {
               </div>
 
               <div>
-                <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Log Annotation & Notes</label>
+                <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Catatan</label>
                 <input
                   type="text"
                   placeholder="Insert bid strategies, holiday adjustments, or variant success notes..."
@@ -2228,7 +2260,7 @@ export function MarketingPage({ activityType }) {
                   type="submit"
                   className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold uppercase"
                 >
-                  Record Entry
+                  Simpan Data
                 </button>
               </div>
 
