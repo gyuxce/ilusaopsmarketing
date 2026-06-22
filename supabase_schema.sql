@@ -167,7 +167,7 @@ CREATE INDEX idx_project_members_user_id    ON public.project_members(user_id);
 CREATE TABLE public.marketing_activities (
   id            uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_id     uuid        NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
-  project_id    uuid        NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  project_id    uuid        REFERENCES public.projects(id) ON DELETE SET NULL,
   activity_type text        NOT NULL, -- 'campaign', 'creative_test', 'content'
   title         text        NOT NULL,
   owner_id      uuid        REFERENCES public.users(id) ON DELETE SET NULL,

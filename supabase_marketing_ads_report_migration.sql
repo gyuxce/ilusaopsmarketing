@@ -5,6 +5,7 @@
 -- ============================================================
 
 ALTER TABLE public.marketing_activities
+  ALTER COLUMN project_id DROP NOT NULL,
   ADD COLUMN IF NOT EXISTS objective text,
   ADD COLUMN IF NOT EXISTS platform text,
   ADD COLUMN IF NOT EXISTS ad_format text,

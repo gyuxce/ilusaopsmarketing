@@ -80,7 +80,7 @@ export interface WorkItem {
 export interface MarketingActivity {
   id: string;
   client_id: string;
-  project_id: string;
+  project_id?: string | null;
   activity_type: ActivityType;
   title: string;
   owner_id?: string | null;
