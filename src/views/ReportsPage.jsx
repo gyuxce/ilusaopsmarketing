@@ -55,6 +55,19 @@ const getKpiWarnings = ({ ctr, cpc, cpl, frequency, clicks, impressions, reach }
   return warnings;
 };
 
+const getCreativePreviewUrl = (url) => {
+  if (!url) return null;
+  const value = String(url).trim();
+  if (/\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(value)) return value;
+
+  const driveMatch = value.match(/drive\.google\.com\/file\/d\/([^/]+)/) || value.match(/[?&]id=([^&]+)/);
+  if (driveMatch?.[1]) {
+    return `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1000`;
+  }
+
+  return null;
+};
+
 export function ReportsPage() {
   const [reportType, setReportType] = useState('attendance');
   const [startDate, setStartDate] = useState(getFirstOfMonthString());
@@ -327,6 +340,37 @@ export function ReportsPage() {
             ))}
           </div>
         )}
+
+        {visibleActivities.some(activity => activity.creative_url) && (
+          <div>
+            <h3 className="text-sm font-black uppercase text-[#141414] mb-3">Materi Iklan</h3>
+            <div className="grid grid-cols-3 gap-4">
+              {visibleActivities.filter(activity => activity.creative_url).map(activity => {
+                const previewUrl = getCreativePreviewUrl(activity.creative_url);
+                return (
+                  <div key={activity.id} className="border border-slate-300 p-3">
+                    <div className="font-mono text-[9px] font-black uppercase text-[#141414] mb-2">{activity.title}</div>
+                    {previewUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={previewUrl}
+                        alt={`Materi iklan ${activity.title}`}
+                        className="h-32 w-full object-cover border border-slate-200 bg-slate-50"
+                      />
+                    ) : (
+                      <div className="h-32 border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-[9px] font-mono text-slate-400 uppercase text-center px-3">
+                        Preview tidak tersedia untuk link ini
+                      </div>
+                    )}
+                    <a href={activity.creative_url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-[9px] font-mono font-bold uppercase text-orange-700">
+                      Buka link materi
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         
         {performanceEntries.length === 0 ? (
           <p className="text-center text-xs font-mono text-slate-400">Belum ada data performa pada periode ini.</p>
@@ -340,6 +384,7 @@ export function ReportsPage() {
                     <th className="p-2 border border-[#141414]">Campaign</th>
                     <th className="p-2 border border-[#141414]">Client / Project</th>
                     <th className="p-2 border border-[#141414]">Segment</th>
+                    <th className="p-2 border border-[#141414]">Materi</th>
                     <th className="p-2 border border-[#141414] text-right">Biaya</th>
                     <th className="p-2 border border-[#141414] text-right">Leads</th>
                     <th className="p-2 border border-[#141414] text-right">CPL</th>
@@ -356,6 +401,11 @@ export function ReportsPage() {
                         <td className="p-2 border-x border-slate-200 font-bold">{activity.title}</td>
                         <td className="p-2 border-x border-slate-200">{clientMap[activity.client_id] || '-'} / {projectMap[activity.project_id] || 'Tanpa project'}</td>
                         <td className="p-2 border-x border-slate-200">{activity.interest_segment || activity.ad_format || '-'}</td>
+                        <td className="p-2 border-x border-slate-200">
+                          {activity.creative_url ? (
+                            <a href={activity.creative_url} target="_blank" rel="noreferrer" className="text-orange-700 font-bold">Buka</a>
+                          ) : '-'}
+                        </td>
                         <td className="p-2 border-x border-slate-200 text-right">{formatMoney(activityTotals.spend)}</td>
                         <td className="p-2 border-x border-slate-200 text-right">{activityTotals.leads.toLocaleString('id-ID')}</td>
                         <td className="p-2 border-x border-slate-200 text-right font-bold text-orange-700">{formatMoney(activityTotals.cpl)}</td>

@@ -101,6 +101,7 @@ export interface MarketingActivity {
   daily_budget?: number;
   benchmark_cpl?: number;
   status_reason?: string | null;
+  creative_url?: string | null;
   participants_webinar?: number;
   participants_mapping?: number;
   participants_interview?: number;

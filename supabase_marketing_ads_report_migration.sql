@@ -15,6 +15,7 @@ ALTER TABLE public.marketing_activities
   ADD COLUMN IF NOT EXISTS daily_budget numeric NOT NULL DEFAULT 0 CHECK (daily_budget >= 0),
   ADD COLUMN IF NOT EXISTS benchmark_cpl numeric NOT NULL DEFAULT 1500 CHECK (benchmark_cpl >= 0),
   ADD COLUMN IF NOT EXISTS status_reason text,
+  ADD COLUMN IF NOT EXISTS creative_url text,
   ADD COLUMN IF NOT EXISTS participants_webinar integer NOT NULL DEFAULT 0 CHECK (participants_webinar >= 0),
   ADD COLUMN IF NOT EXISTS participants_mapping integer NOT NULL DEFAULT 0 CHECK (participants_mapping >= 0),
   ADD COLUMN IF NOT EXISTS participants_interview integer NOT NULL DEFAULT 0 CHECK (participants_interview >= 0);

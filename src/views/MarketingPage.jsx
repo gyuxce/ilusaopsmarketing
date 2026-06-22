@@ -60,6 +60,19 @@ const getKpiWarnings = ({ ctr, cpc, cpl, frequency, clicks, impressions, reach }
   return warnings;
 };
 
+const getCreativePreviewUrl = (url) => {
+  if (!url) return null;
+  const value = String(url).trim();
+  if (/\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(value)) return value;
+
+  const driveMatch = value.match(/drive\.google\.com\/file\/d\/([^/]+)/) || value.match(/[?&]id=([^&]+)/);
+  if (driveMatch?.[1]) {
+    return `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1000`;
+  }
+
+  return null;
+};
+
 const sanitizeMoneyToNumber = (val) => {
   if (!val) return 0;
   let str = String(val).trim();
@@ -265,6 +278,7 @@ export function MarketingPage({ activityType }) {
   const [fDailyBudget, setFDailyBudget] = useState('');
   const [fBenchmarkCpl, setFBenchmarkCpl] = useState('1500');
   const [fStatusReason, setFStatusReason] = useState('');
+  const [fCreativeUrl, setFCreativeUrl] = useState('');
   const [fParticipantsWebinar, setFParticipantsWebinar] = useState('');
   const [fParticipantsMapping, setFParticipantsMapping] = useState('');
   const [fParticipantsInterview, setFParticipantsInterview] = useState('');
@@ -431,6 +445,7 @@ export function MarketingPage({ activityType }) {
     setFDailyBudget('');
     setFBenchmarkCpl('1500');
     setFStatusReason('');
+    setFCreativeUrl('');
     setFParticipantsWebinar('');
     setFParticipantsMapping('');
     setFParticipantsInterview('');
@@ -461,6 +476,7 @@ export function MarketingPage({ activityType }) {
     setFDailyBudget(act.daily_budget || '');
     setFBenchmarkCpl(act.benchmark_cpl || '1500');
     setFStatusReason(act.status_reason || '');
+    setFCreativeUrl(act.creative_url || '');
     setFParticipantsWebinar(act.participants_webinar || '');
     setFParticipantsMapping(act.participants_mapping || '');
     setFParticipantsInterview(act.participants_interview || '');
@@ -503,6 +519,7 @@ export function MarketingPage({ activityType }) {
       daily_budget: sanitizeMoneyToNumber(fDailyBudget),
       benchmark_cpl: sanitizeMoneyToNumber(fBenchmarkCpl),
       status_reason: fStatusReason || null,
+      creative_url: fCreativeUrl || null,
       participants_webinar: sanitizeMoneyToNumber(fParticipantsWebinar),
       participants_mapping: sanitizeMoneyToNumber(fParticipantsMapping),
       participants_interview: sanitizeMoneyToNumber(fParticipantsInterview),
@@ -702,6 +719,7 @@ export function MarketingPage({ activityType }) {
             const interestSegment = getCSVFieldValue(firstRow, ['Interest', 'Segment', 'Interest segment']) || null;
             const audienceLocation = getCSVFieldValue(firstRow, ['Location', 'Lokasi', 'Area']) || null;
             const ageRange = getCSVFieldValue(firstRow, ['Age', 'Usia', 'Age range']) || null;
+            const creativeUrl = getCSVFieldValue(firstRow, ['Creative URL', 'Creative Link', 'Design URL', 'Design Link', 'IG Post', 'Instagram Post', 'Drive Link']) || null;
 
             let minDateStr = null;
             let maxDateStr = null;
@@ -741,6 +759,7 @@ export function MarketingPage({ activityType }) {
               daily_budget: 0,
               benchmark_cpl: 1500,
               status_reason: null,
+              creative_url: creativeUrl,
               participants_webinar: 0,
               participants_mapping: 0,
               participants_interview: 0,
@@ -863,10 +882,17 @@ export function MarketingPage({ activityType }) {
     if (reportScope === 'project' && selectedActivity.project_id) {
       return activities.filter(act => act.project_id === selectedActivity.project_id);
     }
+    if (reportScope === 'project') return [selectedActivity];
     return activities.filter(act => act.client_id === selectedActivity.client_id);
   };
 
   const reportActivities = getReportActivities();
+  const effectiveReportScope = reportScope === 'project' && !selectedActivity?.project_id ? 'campaign' : reportScope;
+  const reportScopeLabel = effectiveReportScope === 'campaign'
+    ? `Campaign: ${selectedActivity?.title || '-'}`
+    : effectiveReportScope === 'project'
+      ? `Project: ${projectMap[selectedActivity?.project_id] || '-'}`
+      : `Client: ${clientMap[selectedActivity?.client_id] || '-'}`;
   const reportActivityIds = new Set(reportActivities.map(act => act.id));
   const reportEntries = allPerformanceEntries.filter(entry => reportActivityIds.has(entry.activity_id));
   const reportTotals = aggregateEntries(reportEntries);
@@ -1189,6 +1215,25 @@ export function MarketingPage({ activityType }) {
                     <b>Targeting:</b> {selectedActivity.targeting}
                   </p>
                 )}
+                {selectedActivity.creative_url && (
+                  <div className="pt-2 max-w-sm">
+                    {getCreativePreviewUrl(selectedActivity.creative_url) ? (
+                      <a href={selectedActivity.creative_url} target="_blank" rel="noreferrer" className="block border border-slate-200 bg-slate-50 p-2 hover:border-orange-400 transition-colors">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={getCreativePreviewUrl(selectedActivity.creative_url)}
+                          alt={`Materi iklan ${selectedActivity.title}`}
+                          className="h-28 w-full object-cover bg-white"
+                        />
+                        <span className="mt-1 block text-[8px] font-mono uppercase text-slate-500">Klik untuk membuka materi iklan</span>
+                      </a>
+                    ) : (
+                      <a href={selectedActivity.creative_url} target="_blank" rel="noreferrer" className="inline-flex border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-mono font-bold uppercase text-slate-700 hover:border-orange-400">
+                        Buka materi iklan
+                      </a>
+                    )}
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-1.5 pt-1 font-mono text-[8.5px] uppercase text-slate-500">
                   {(selectedActivity.objective || selectedActivity.platform) && (
                     <span className="border border-slate-200 bg-slate-50 px-1.5 py-0.5">
@@ -1261,21 +1306,29 @@ export function MarketingPage({ activityType }) {
                   <p className="text-[9px] text-slate-500 font-mono uppercase mt-0.5">
                     Menampilkan {reportActivities.length} campaign dan {reportEntries.length} data performa
                   </p>
+                  <p className="text-[9px] text-slate-400 font-mono uppercase mt-0.5">
+                    Scope aktif: {reportScopeLabel}
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-1 bg-white border border-[#141414]/15 p-1 font-mono text-[9px] uppercase">
-                  {['campaign', 'project', 'client'].map(scope => (
-                    <button
-                      key={scope}
-                      type="button"
-                      onClick={() => setReportScope(scope)}
-                      className={`px-2.5 py-1 font-bold cursor-pointer transition-colors ${
-                        reportScope === scope ? 'bg-[#141414] text-white' : 'text-slate-500 hover:bg-slate-100'
-                      }`}
-                    >
-                      {scope === 'campaign' ? 'Campaign' : scope === 'project' ? 'Project' : 'Client'}
-                    </button>
-                  ))}
+                  {['campaign', 'project', 'client'].map(scope => {
+                    const disabled = scope === 'project' && !selectedActivity?.project_id;
+                    return (
+                      <button
+                        key={scope}
+                        type="button"
+                        disabled={disabled}
+                        title={disabled ? 'Campaign ini belum terhubung ke project' : ''}
+                        onClick={() => setReportScope(scope)}
+                        className={`px-2.5 py-1 font-bold transition-colors ${
+                          effectiveReportScope === scope ? 'bg-[#141414] text-white' : 'text-slate-500 hover:bg-slate-100'
+                        } ${disabled ? 'opacity-40 cursor-not-allowed hover:bg-white' : 'cursor-pointer'}`}
+                      >
+                        {scope === 'campaign' ? 'Campaign' : scope === 'project' ? 'Project' : 'Client'}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1350,6 +1403,7 @@ export function MarketingPage({ activityType }) {
                       <tr>
                         <th className="p-2">Campaign</th>
                         <th className="p-2">Segment</th>
+                        <th className="p-2">Materi</th>
                         <th className="p-2 text-right">Spend</th>
                         <th className="p-2 text-right">Leads</th>
                         <th className="p-2 text-right">CPL</th>
@@ -1365,6 +1419,11 @@ export function MarketingPage({ activityType }) {
                           <tr key={act.id} className="bg-white">
                             <td className="p-2 font-bold text-[#141414]">{act.title}</td>
                             <td className="p-2 text-slate-500">{act.interest_segment || act.ad_format || '-'}</td>
+                            <td className="p-2">
+                              {act.creative_url ? (
+                                <a href={act.creative_url} target="_blank" rel="noreferrer" className="text-orange-700 font-bold hover:underline">Buka</a>
+                              ) : '-'}
+                            </td>
                             <td className="p-2 text-right">{formatMoney(actTotals.spend)}</td>
                             <td className="p-2 text-right">{actTotals.results.toLocaleString()}</td>
                             <td className="p-2 text-right text-orange-800">{formatMoney(actTotals.cpl)}</td>
@@ -1945,6 +2004,20 @@ export function MarketingPage({ activityType }) {
                   rows={2}
                   className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none placeholder:text-slate-400 font-mono text-[10px]"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Link Materi Iklan</label>
+                <input
+                  type="url"
+                  placeholder="Google Drive image, direct image URL, atau link post Instagram"
+                  value={fCreativeUrl}
+                  onChange={(e) => setFCreativeUrl(e.target.value)}
+                  className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none placeholder:text-slate-400 text-xs"
+                />
+                <p className="mt-1 text-[8px] font-mono uppercase text-slate-400">
+                  Direct image/Drive public akan tampil sebagai preview. Instagram akan tampil sebagai link.
+                </p>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
