@@ -1,9 +1,19 @@
 import React from 'react';
-import { TrendingUp, Users, CheckSquare, UserCheck } from 'lucide-react';
+import {
+  AlertTriangle,
+  BarChart3,
+  CheckSquare,
+  DollarSign,
+  Target,
+  TrendingUp,
+  UserCheck,
+  Users,
+} from 'lucide-react';
 import { useClients } from '../hooks/useClients';
 import { useWorkItems } from '../hooks/useWorkItems';
 import { useActivities } from '../hooks/useActivities';
 import { attendanceService } from '../services/attendanceService';
+import { performanceService } from '../services/performanceService';
 import { useQuery } from '@tanstack/react-query';
 import { formatDate, formatMoney, getLocalDateString } from '../utils/formatters';
 
@@ -24,39 +34,77 @@ export function HomePage({ onNavigate, attendanceVersion = 0 }: HomePageProps) {
     queryFn: () => attendanceService.getLogs(today, today),
   });
 
-  // Derived stats
-  const activeClients = clients.filter(c => c.status === 'Active').length;
-  const doneTasks = workItems.filter(w => w.status === 'Done').length;
-  const activeCampaigns = activities.filter(a => a.status === 'Active').length;
-  const totalSpend = activities.reduce((sum, a) => sum + (a.budget || 0), 0);
+  const { data: performanceEntries = [] } = useQuery({
+    queryKey: ['performanceEntries', 'dashboard'],
+    queryFn: () => performanceService.getAll(),
+  });
+
+  const activeClients = clients.filter(client => client.status === 'Active').length;
+  const openTasks = workItems.filter(item => item.status !== 'Done').length;
+  const activeCampaigns = activities.filter(activity => activity.status === 'Active').length;
+  const totalBudget = activities.reduce((sum, activity) => sum + Number(activity.budget || 0), 0);
+  const totalSpend = performanceEntries.reduce((sum, entry) => sum + Number(entry.spend || 0), 0);
+  const totalLeads = performanceEntries.reduce((sum, entry) => sum + Number(entry.results || 0), 0);
+  const totalClicks = performanceEntries.reduce((sum, entry) => sum + Number(entry.clicks || 0), 0);
+  const totalImpressions = performanceEntries.reduce((sum, entry) => sum + Number(entry.impressions || 0), 0);
+  const avgCpl = totalLeads > 0 ? totalSpend / totalLeads : 0;
+  const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+  const totalWebinar = activities.reduce((sum, activity) => sum + Number(activity.participants_webinar || 0), 0);
+  const totalMapping = activities.reduce((sum, activity) => sum + Number(activity.participants_mapping || 0), 0);
+  const totalInterview = activities.reduce((sum, activity) => sum + Number(activity.participants_interview || 0), 0);
   const clockedInToday = attendanceLogs.length;
 
   const stats = [
     { label: 'Active Clients', value: activeClients, icon: Users, color: 'text-orange-600', bg: 'bg-orange-50', tab: 'Clients' },
-    { label: 'Tasks Done', value: doneTasks, icon: CheckSquare, color: 'text-emerald-600', bg: 'bg-emerald-50', tab: 'Work' },
+    { label: 'Open Tasks', value: openTasks, icon: CheckSquare, color: 'text-emerald-600', bg: 'bg-emerald-50', tab: 'Work' },
     { label: 'Active Campaigns', value: activeCampaigns, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', tab: 'Ads Campaigns' },
     { label: 'Clocked In Today', value: clockedInToday, icon: UserCheck, color: 'text-purple-600', bg: 'bg-purple-50', tab: 'Attendance' },
   ];
 
-  // Recent tasks (not done, ordered by created_at)
-  const recentTasks = workItems
-    .filter(w => w.status !== 'Done')
+  const urgentTasks = workItems
+    .filter(item => item.status !== 'Done')
+    .sort((a, b) => {
+      const rank: Record<string, number> = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
+      return (rank[a.priority] ?? 4) - (rank[b.priority] ?? 4);
+    })
     .slice(0, 6);
 
-  // Recent campaigns
-  const recentCampaigns = activities.slice(0, 4);
+  const campaignSummaries = activities.map(activity => {
+    const entries = performanceEntries.filter(entry => entry.activity_id === activity.id);
+    const spend = entries.reduce((sum, entry) => sum + Number(entry.spend || 0), 0);
+    const leads = entries.reduce((sum, entry) => sum + Number(entry.results || 0), 0);
+    const clicks = entries.reduce((sum, entry) => sum + Number(entry.clicks || 0), 0);
+    const impressions = entries.reduce((sum, entry) => sum + Number(entry.impressions || 0), 0);
+    const cpl = leads > 0 ? spend / leads : 0;
+    const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+    return { activity, spend, leads, cpl, ctr };
+  });
+
+  const topCampaigns = [...campaignSummaries]
+    .filter(item => item.leads > 0)
+    .sort((a, b) => a.cpl - b.cpl)
+    .slice(0, 4);
+
+  const attentionCampaigns = [...campaignSummaries]
+    .filter(item => item.leads === 0 || item.cpl > Number(item.activity.benchmark_cpl || 1500) || item.ctr > 10)
+    .slice(0, 4);
+
+  const adsInsightCards = [
+    { label: 'Actual Spend', value: formatMoney(totalSpend), sub: `Budget: ${formatMoney(totalBudget)}`, icon: DollarSign, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Total Leads', value: totalLeads.toLocaleString('id-ID'), sub: `CPL: ${formatMoney(avgCpl)}`, icon: Target, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Average CTR', value: `${avgCtr.toFixed(2)}%`, sub: `${totalClicks.toLocaleString('id-ID')} clicks`, icon: BarChart3, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Interview Funnel', value: totalInterview.toLocaleString('id-ID'), sub: `${totalWebinar} webinar / ${totalMapping} pemetaan`, icon: UserCheck, color: 'text-purple-600', bg: 'bg-purple-50' },
+  ];
 
   return (
     <div className="space-y-8">
-      {/* HEADER */}
       <div className="border-b border-[#141414]/15 pb-4">
         <h1 className="text-2xl font-bold text-[#141414] uppercase tracking-wider">Overview</h1>
         <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-          {formatDate(today)} · Marketing Ops Workspace
+          {formatDate(today)} - Marketing Ops Workspace
         </p>
       </div>
 
-      {/* STATS GRID */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map(stat => {
           const Icon = stat.icon;
@@ -70,7 +118,7 @@ export function HomePage({ onNavigate, attendanceVersion = 0 }: HomePageProps) {
                 <div className={`h-9 w-9 ${stat.bg} flex items-center justify-center`}>
                   <Icon className={`h-5 w-5 ${stat.color}`} />
                 </div>
-                <span className="text-[8px] font-mono text-slate-400 uppercase group-hover:text-orange-600 transition-colors">View →</span>
+                <span className="text-[8px] font-mono text-slate-400 uppercase group-hover:text-orange-600 transition-colors">View -&gt;</span>
               </div>
               <div className="text-3xl font-black text-[#141414] tabular-nums">{stat.value}</div>
               <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mt-1">{stat.label}</div>
@@ -79,20 +127,41 @@ export function HomePage({ onNavigate, attendanceVersion = 0 }: HomePageProps) {
         })}
       </div>
 
-      {/* BOTTOM GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {adsInsightCards.map(card => {
+          const Icon = card.icon;
+          return (
+            <button
+              key={card.label}
+              onClick={() => onNavigate('Ads Campaigns')}
+              className="bg-white border border-[#141414]/15 p-4 text-left hover:border-orange-600 transition-all cursor-pointer"
+            >
+              <div className="flex items-start gap-3">
+                <div className={`h-9 w-9 ${card.bg} flex items-center justify-center shrink-0`}>
+                  <Icon className={`h-5 w-5 ${card.color}`} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[9px] font-mono uppercase text-slate-400">{card.label}</div>
+                  <div className="text-lg font-black text-[#141414] truncate">{card.value}</div>
+                  <div className="text-[9px] font-mono uppercase text-slate-500 truncate">{card.sub}</div>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
 
-        {/* Recent Open Tasks */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white border border-[#141414]/15 p-5">
           <h2 className="font-bold text-xs uppercase tracking-wider font-mono text-[#141414] mb-4 flex items-center justify-between">
-            <span>Open Tasks</span>
-            <button onClick={() => onNavigate('Work')} className="text-orange-600 hover:underline cursor-pointer text-[9px]">View All →</button>
+            <span>Task yang Perlu Diperhatikan</span>
+            <button onClick={() => onNavigate('Work')} className="text-orange-600 hover:underline cursor-pointer text-[9px]">View All -&gt;</button>
           </h2>
-          {recentTasks.length === 0 ? (
-            <p className="text-[11px] font-mono text-slate-400 text-center py-6">Semua task sudah selesai 🎉</p>
+          {urgentTasks.length === 0 ? (
+            <p className="text-[11px] font-mono text-slate-400 text-center py-6">Semua task sudah selesai.</p>
           ) : (
             <div className="space-y-2">
-              {recentTasks.map(task => (
+              {urgentTasks.map(task => (
                 <div key={task.id} className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-100 font-mono text-[10px]">
                   <span className="text-[#141414] font-bold truncate flex-1">{task.title}</span>
                   <span className={`ml-2 px-1.5 py-0.5 text-[8px] font-bold uppercase border shrink-0 ${
@@ -106,28 +175,24 @@ export function HomePage({ onNavigate, attendanceVersion = 0 }: HomePageProps) {
           )}
         </div>
 
-        {/* Campaign Summary */}
         <div className="bg-white border border-[#141414]/15 p-5">
           <h2 className="font-bold text-xs uppercase tracking-wider font-mono text-[#141414] mb-4 flex items-center justify-between">
-            <span>Campaigns</span>
-            <button onClick={() => onNavigate('Ads Campaigns')} className="text-orange-600 hover:underline cursor-pointer text-[9px]">View All →</button>
+            <span>Campaign Paling Efisien</span>
+            <button onClick={() => onNavigate('Ads Campaigns')} className="text-orange-600 hover:underline cursor-pointer text-[9px]">View All -&gt;</button>
           </h2>
           <div className="mb-3 p-3 bg-[#141414] text-white font-mono text-[10px] flex items-center justify-between">
-            <span className="uppercase tracking-wider">Total Budget</span>
+            <span className="uppercase tracking-wider">Total Actual Spend</span>
             <span className="font-black text-sm">{formatMoney(totalSpend)}</span>
           </div>
-          {recentCampaigns.length === 0 ? (
-            <p className="text-[11px] font-mono text-slate-400 text-center py-4">Belum ada campaign.</p>
+          {topCampaigns.length === 0 ? (
+            <p className="text-[11px] font-mono text-slate-400 text-center py-4">Belum ada campaign dengan leads.</p>
           ) : (
             <div className="space-y-2">
-              {recentCampaigns.map(a => (
-                <div key={a.id} className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-100 font-mono text-[10px]">
-                  <span className="text-[#141414] font-bold truncate flex-1">{a.title}</span>
-                  <span className={`ml-2 px-1.5 py-0.5 text-[8px] font-bold uppercase border shrink-0 ${
-                    a.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-300' :
-                    a.status === 'Paused' ? 'bg-amber-50 text-amber-700 border-amber-300' :
-                    'bg-slate-100 text-slate-600 border-slate-300'
-                  }`}>{a.status}</span>
+              {topCampaigns.map(item => (
+                <div key={item.activity.id} className="grid grid-cols-[1fr_auto_auto] gap-3 items-center p-2.5 bg-slate-50 border border-slate-100 font-mono text-[10px]">
+                  <span className="text-[#141414] font-bold truncate">{item.activity.title}</span>
+                  <span className="text-slate-500">{item.leads} leads</span>
+                  <span className="font-bold text-orange-700">{formatMoney(item.cpl)}</span>
                 </div>
               ))}
             </div>
@@ -135,7 +200,60 @@ export function HomePage({ onNavigate, attendanceVersion = 0 }: HomePageProps) {
         </div>
       </div>
 
-      {/* Clocked In Today */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white border border-[#141414]/15 p-5">
+          <h2 className="font-bold text-xs uppercase tracking-wider font-mono text-[#141414] mb-4 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-orange-600" />
+            <span>Campaign yang Perlu Dicek</span>
+          </h2>
+          {attentionCampaigns.length === 0 ? (
+            <p className="text-[11px] font-mono text-slate-400 text-center py-4">Tidak ada alert campaign saat ini.</p>
+          ) : (
+            <div className="space-y-2">
+              {attentionCampaigns.map(item => {
+                const benchmark = Number(item.activity.benchmark_cpl || 1500);
+                const reason = item.leads === 0
+                  ? 'Belum ada leads'
+                  : item.ctr > 10
+                    ? 'CTR perlu dicek'
+                    : `CPL di atas benchmark ${formatMoney(benchmark)}`;
+                return (
+                  <div key={item.activity.id} className="p-2.5 bg-amber-50 border border-amber-200 font-mono text-[10px]">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-bold text-[#141414] truncate">{item.activity.title}</span>
+                      <span className="text-amber-800 font-bold uppercase shrink-0">{reason}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white border border-[#141414]/15 p-5">
+          <h2 className="font-bold text-xs uppercase tracking-wider font-mono text-[#141414] mb-4">
+            Funnel Harunokaze
+          </h2>
+          <div className="grid grid-cols-3 gap-3 font-mono text-[10px]">
+            <div className="bg-orange-50 border border-orange-200 p-3">
+              <span className="block text-orange-700 uppercase text-[8px]">Webinar</span>
+              <strong className="text-lg text-[#141414]">{totalWebinar.toLocaleString('id-ID')}</strong>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 p-3">
+              <span className="block text-slate-500 uppercase text-[8px]">Pemetaan</span>
+              <strong className="text-lg text-[#141414]">{totalMapping.toLocaleString('id-ID')}</strong>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 p-3">
+              <span className="block text-slate-500 uppercase text-[8px]">Interview</span>
+              <strong className="text-lg text-[#141414]">{totalInterview.toLocaleString('id-ID')}</strong>
+            </div>
+          </div>
+          <p className="mt-3 text-[10px] font-mono text-slate-500">
+            Interview rate dari total leads: {totalLeads > 0 ? ((totalInterview / totalLeads) * 100).toFixed(1) : '0.0'}%
+          </p>
+        </div>
+      </div>
+
       {attendanceLogs.length > 0 && (
         <div className="bg-white border border-[#141414]/15 p-5">
           <h2 className="font-bold text-xs uppercase tracking-wider font-mono text-[#141414] mb-4">

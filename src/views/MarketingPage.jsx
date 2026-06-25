@@ -2312,12 +2312,12 @@ export function MarketingPage({ activityType }) {
 
               <div>
                 <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Catatan</label>
-                <input
-                  type="text"
-                  placeholder="Insert bid strategies, holiday adjustments, or variant success notes..."
+                <textarea
+                  placeholder="Contoh: Cost per chat = Rp3.255. Performa bagus, lanjut scale up budget."
                   value={fpNotes}
                   onChange={(e) => setFpNotes(e.target.value)}
-                  className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none"
+                  rows={3}
+                  className="w-full p-2 border border-[#141414]/20 focus:border-[#141414] bg-white rounded-none resize-y leading-relaxed"
                 />
               </div>
 
