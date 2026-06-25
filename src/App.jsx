@@ -16,7 +16,8 @@ import {
   Search,
   RefreshCw,
   CalendarClock,
-  LogOut
+  LogOut,
+  Palette
 } from 'lucide-react';
 
 // Import Views
@@ -30,6 +31,7 @@ import { ReportsPage } from './views/ReportsPage';
 import { SettingsPage } from './views/SettingsPage';
 import { AttendanceLogsPage } from './views/AttendanceLogsPage';
 import { LoginPage } from './views/LoginPage';
+import { CreativePage } from './views/CreativePage';
 
 // Import Custom Hooks & Services
 import { useClients } from './hooks/useClients';
@@ -191,6 +193,7 @@ export default function App() {
     { name: 'Clients', label: 'Clients', icon: Users },
     { name: 'Work', label: 'Work', icon: FolderGit },
     { name: 'Ads Campaigns', label: 'Marketing', icon: Megaphone },
+    { name: 'Creative', label: 'Creative', icon: Palette },
     { name: 'Weekly Review', label: 'Weekly Review', icon: FileText },
     { name: 'Reports', label: 'Reports', icon: BarChart2 },
     { name: 'Attendance', label: 'Attendance', icon: CalendarClock },
@@ -213,6 +216,8 @@ export default function App() {
         return <WorkPage />;
       case 'Ads Campaigns':
         return <AdsCampaigns />;
+      case 'Creative':
+        return <CreativePage />;
       case 'Weekly Review':
         return <WeeklyReview />;
       case 'Reports':

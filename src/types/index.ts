@@ -10,6 +10,8 @@ export type WorkItemStatus = 'Backlog' | 'To Do' | 'In Progress' | 'Review' | 'B
 export type WorkItemPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
 export type ActivityStatus = 'Draft' | 'Scheduled' | 'Active' | 'Paused' | 'Completed';
 export type ActivityType = 'campaign' | 'creative_test' | 'content';
+export type CreativeOutputType = 'Single' | 'Carousel' | 'Story' | 'Banner' | 'Reels Cover' | 'Landing Page Asset' | 'Other';
+export type CreativeOutputStatus = 'Draft' | 'Revision' | 'Done';
 
 export interface User {
   id: string;
@@ -123,6 +125,23 @@ export interface PerformanceEntry {
   notes?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface CreativeOutput {
+  id: string;
+  output_date: string;
+  designer_id?: string | null;
+  client_id?: string | null;
+  project_id?: string | null;
+  activity_id?: string | null;
+  output_type: CreativeOutputType | string;
+  quantity: number;
+  asset_url?: string | null;
+  status: CreativeOutputStatus;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
 }
 
 export interface AttendanceLog {
