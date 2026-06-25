@@ -10,12 +10,21 @@ import {
   Users,
 } from 'lucide-react';
 import { useClients } from '../hooks/useClients';
-import { useWorkItems } from '../hooks/useWorkItems';
 import { useActivities } from '../hooks/useActivities';
+import { useProjects } from '../hooks/useProjects';
 import { attendanceService } from '../services/attendanceService';
 import { performanceService } from '../services/performanceService';
 import { useQuery } from '@tanstack/react-query';
 import { formatDate, formatMoney, getLocalDateString } from '../utils/formatters';
+
+const WORK_COLUMNS = ['To Do', 'In Progress', 'Review', 'Done'] as const;
+type WorkBoardStatus = typeof WORK_COLUMNS[number];
+
+const normalizeWorkStatus = (status?: string): WorkBoardStatus => {
+  if (WORK_COLUMNS.includes(status as WorkBoardStatus)) return status as WorkBoardStatus;
+  if (status === 'Completed') return 'Done';
+  return 'To Do';
+};
 
 interface HomePageProps {
   onNavigate: (tab: string) => void;
@@ -26,7 +35,7 @@ export function HomePage({ onNavigate, attendanceVersion = 0 }: HomePageProps) {
   const today = getLocalDateString();
 
   const { data: clients = [] } = useClients();
-  const { data: workItems = [] } = useWorkItems();
+  const { data: projects = [] } = useProjects();
   const { data: activities = [] } = useActivities();
 
   const { data: attendanceLogs = [] } = useQuery({
@@ -39,8 +48,39 @@ export function HomePage({ onNavigate, attendanceVersion = 0 }: HomePageProps) {
     queryFn: () => performanceService.getAll(),
   });
 
+  const workBoardItems = [
+    ...projects.map(project => ({
+      id: project.id,
+      title: project.project_name,
+      status: normalizeWorkStatus(project.status),
+      type: 'Project' as const,
+      client_id: project.client_id,
+      start_date: project.start_date,
+      due_date: project.due_date,
+    })),
+    ...activities.map(activity => ({
+      id: activity.id,
+      title: activity.title,
+      status: normalizeWorkStatus(activity.status),
+      type: 'Ads' as const,
+      client_id: activity.client_id,
+      start_date: activity.start_date,
+      due_date: activity.end_date,
+    })),
+  ];
+
+  const workStatusCounts: Record<WorkBoardStatus, number> = {
+    'To Do': 0,
+    'In Progress': 0,
+    Review: 0,
+    Done: 0,
+  };
+  workBoardItems.forEach(item => {
+    workStatusCounts[item.status] += 1;
+  });
+
   const activeClients = clients.filter(client => client.status === 'Active').length;
-  const openTasks = workItems.filter(item => item.status !== 'Done').length;
+  const openWorkItems = workBoardItems.filter(item => item.status !== 'Done').length;
   const activeCampaigns = activities.filter(activity => activity.status === 'Active').length;
   const totalBudget = activities.reduce((sum, activity) => sum + Number(activity.budget || 0), 0);
   const totalSpend = performanceEntries.reduce((sum, entry) => sum + Number(entry.spend || 0), 0);
@@ -56,16 +96,16 @@ export function HomePage({ onNavigate, attendanceVersion = 0 }: HomePageProps) {
 
   const stats = [
     { label: 'Active Clients', value: activeClients, icon: Users, color: 'text-orange-600', bg: 'bg-orange-50', tab: 'Clients' },
-    { label: 'Open Tasks', value: openTasks, icon: CheckSquare, color: 'text-emerald-600', bg: 'bg-emerald-50', tab: 'Work' },
+    { label: 'Open Work', value: openWorkItems, icon: CheckSquare, color: 'text-emerald-600', bg: 'bg-emerald-50', tab: 'Work' },
     { label: 'Active Campaigns', value: activeCampaigns, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', tab: 'Ads Campaigns' },
     { label: 'Clocked In Today', value: clockedInToday, icon: UserCheck, color: 'text-purple-600', bg: 'bg-purple-50', tab: 'Attendance' },
   ];
 
-  const urgentTasks = workItems
+  const workItemsNeedingAttention = [...workBoardItems]
     .filter(item => item.status !== 'Done')
     .sort((a, b) => {
-      const rank: Record<string, number> = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
-      return (rank[a.priority] ?? 4) - (rank[b.priority] ?? 4);
+      const rank: Record<WorkBoardStatus, number> = { Review: 0, 'In Progress': 1, 'To Do': 2, Done: 3 };
+      return rank[a.status] - rank[b.status];
     })
     .slice(0, 6);
 
@@ -154,21 +194,39 @@ export function HomePage({ onNavigate, attendanceVersion = 0 }: HomePageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white border border-[#141414]/15 p-5">
           <h2 className="font-bold text-xs uppercase tracking-wider font-mono text-[#141414] mb-4 flex items-center justify-between">
-            <span>Task yang Perlu Diperhatikan</span>
+            <span>Work yang Perlu Diperhatikan</span>
             <button onClick={() => onNavigate('Work')} className="text-orange-600 hover:underline cursor-pointer text-[9px]">View All -&gt;</button>
           </h2>
-          {urgentTasks.length === 0 ? (
-            <p className="text-[11px] font-mono text-slate-400 text-center py-6">Semua task sudah selesai.</p>
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            {WORK_COLUMNS.map(column => (
+              <button
+                key={column}
+                onClick={() => onNavigate('Work')}
+                className="border border-slate-200 bg-slate-50 p-2 text-left hover:border-[#141414] transition-colors"
+              >
+                <span className="block text-[8px] font-mono uppercase text-slate-500 truncate">{column}</span>
+                <strong className="block text-lg font-black text-[#141414] tabular-nums">{workStatusCounts[column]}</strong>
+              </button>
+            ))}
+          </div>
+          {workItemsNeedingAttention.length === 0 ? (
+            <p className="text-[11px] font-mono text-slate-400 text-center py-6">Semua work item sudah selesai.</p>
           ) : (
             <div className="space-y-2">
-              {urgentTasks.map(task => (
+              {workItemsNeedingAttention.map(task => (
                 <div key={task.id} className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-100 font-mono text-[10px]">
-                  <span className="text-[#141414] font-bold truncate flex-1">{task.title}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[#141414] font-bold truncate block">{task.title}</span>
+                    <span className="text-[8px] text-slate-400 uppercase">
+                      {task.type}
+                      {task.due_date ? ` - due ${task.due_date}` : ''}
+                    </span>
+                  </div>
                   <span className={`ml-2 px-1.5 py-0.5 text-[8px] font-bold uppercase border shrink-0 ${
-                    task.priority === 'Urgent' ? 'bg-red-50 text-red-700 border-red-300' :
-                    task.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-300' :
+                    task.status === 'Review' ? 'bg-orange-50 text-orange-700 border-orange-300' :
+                    task.status === 'In Progress' ? 'bg-blue-50 text-blue-700 border-blue-300' :
                     'bg-slate-100 text-slate-600 border-slate-300'
-                  }`}>{task.priority}</span>
+                  }`}>{task.status}</span>
                 </div>
               ))}
             </div>
