@@ -12,6 +12,7 @@ export type ActivityStatus = 'Draft' | 'Scheduled' | 'Active' | 'Paused' | 'Comp
 export type ActivityType = 'campaign' | 'creative_test' | 'content';
 export type CreativeOutputType = 'Single' | 'Carousel' | 'Story' | 'Banner' | 'Reels Cover' | 'Landing Page Asset' | 'Other';
 export type CreativeOutputStatus = 'Draft' | 'Revision' | 'Done';
+export type DailyReportDivision = 'Operasional' | 'Admin Operasional' | 'Customer Relation-Sales' | 'Marketing-Design';
 
 export interface User {
   id: string;
@@ -139,6 +140,21 @@ export interface CreativeOutput {
   asset_url?: string | null;
   status: CreativeOutputStatus;
   notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+export interface DailyReport {
+  id: string;
+  client_id: string;
+  report_date: string;
+  user_id?: string | null;
+  division: DailyReportDivision | string;
+  highlight?: string | null;
+  challenge?: string | null;
+  next_plan?: string | null;
+  need_support?: string | null;
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
