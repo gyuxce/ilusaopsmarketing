@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Download,
   Edit3,
   FileDown,
   FileText,
   Plus,
   Trash2,
+  X,
 } from 'lucide-react';
 import { useClients } from '../hooks/useClients';
 import { useUsers } from '../hooks/useUsers';
@@ -31,8 +31,7 @@ const escapeHtml = (value?: string | null) =>
     .replace(/'/g, '&#039;')
     .replace(/\n/g, '<br />');
 
-const slugify = (value: string) =>
-  value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'daily-report';
+const compactText = (value?: string | null) => String(value || '').trim();
 
 const buildReportHtml = ({
   report,
@@ -42,45 +41,74 @@ const buildReportHtml = ({
   report: DailyReport;
   clientName: string;
   userName: string;
-}) => `
-  <div style="width: 794px; min-height: 1123px; box-sizing: border-box; padding: 56px; background: #ffffff; color: #141414; font-family: Arial, sans-serif;">
-    <div style="border-bottom: 4px solid #141414; padding-bottom: 24px; margin-bottom: 34px;">
-      <div style="font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: #f15a24; font-weight: 700; margin-bottom: 10px;">ILUSA DAILY REPORT</div>
-      <h1 style="font-size: 30px; line-height: 1.15; margin: 0; letter-spacing: .5px;">Daily Report - ${escapeHtml(clientName)}</h1>
+}) => {
+  const hasSupport = compactText(report.need_support).length > 0;
+  const sections = [
+    ['01', 'Highlight', report.highlight, '#fff7ed'],
+    ['02', 'Challenge / Rejection', report.challenge, '#f8fafc'],
+    ['03', 'Next Plan / Positive Progress', report.next_plan, '#ecfdf5'],
+    ['04', 'Need Support / Escalation', report.need_support, hasSupport ? '#fffbeb' : '#f8fafc'],
+  ];
+
+  return `
+    <div style="width: 794px; min-height: 1123px; box-sizing: border-box; padding: 44px; background: #ffffff; color: #141414; font-family: Arial, sans-serif;">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 28px; border-bottom: 5px solid #141414; padding-bottom: 24px;">
+        <div>
+          <div style="font-size: 10px; letter-spacing: 5px; text-transform: uppercase; color: #f15a24; font-weight: 800; margin-bottom: 12px;">ILUSA OPS WORKSPACE</div>
+          <h1 style="font-size: 34px; line-height: 1.05; margin: 0 0 10px; letter-spacing: .2px;">Daily Report</h1>
+          <div style="font-size: 18px; font-weight: 800; color: #334155;">${escapeHtml(clientName)}</div>
+        </div>
+        <div style="background: #141414; color: white; padding: 16px 18px; min-width: 170px;">
+          <div style="font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #cbd5e1; margin-bottom: 8px;">Report Date</div>
+          <div style="font-size: 18px; font-weight: 900;">${escapeHtml(formatDate(report.report_date))}</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 26px 0;">
+        <div style="border: 1px solid #d8dee8; padding: 14px; background: #f8fafc;">
+          <div style="font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: #64748b; font-weight: 800; margin-bottom: 8px;">Client</div>
+          <div style="font-size: 14px; line-height: 1.35; font-weight: 900;">${escapeHtml(clientName)}</div>
+        </div>
+        <div style="border: 1px solid #d8dee8; padding: 14px; background: #f8fafc;">
+          <div style="font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: #64748b; font-weight: 800; margin-bottom: 8px;">Reported By</div>
+          <div style="font-size: 14px; line-height: 1.35; font-weight: 900;">${escapeHtml(userName)}</div>
+        </div>
+        <div style="border: 1px solid #d8dee8; padding: 14px; background: #f8fafc;">
+          <div style="font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: #64748b; font-weight: 800; margin-bottom: 8px;">Division</div>
+          <div style="font-size: 14px; line-height: 1.35; font-weight: 900;">${escapeHtml(report.division)}</div>
+        </div>
+      </div>
+
+      <div style="border: 1px solid ${hasSupport ? '#f59e0b' : '#d8dee8'}; background: ${hasSupport ? '#fffbeb' : '#f8fafc'}; padding: 16px 18px; margin-bottom: 22px;">
+        <div style="font-size: 10px; letter-spacing: 2px; text-transform: uppercase; font-weight: 900; color: ${hasSupport ? '#b45309' : '#64748b'}; margin-bottom: 8px;">Executive Attention</div>
+        <div style="font-size: 14px; line-height: 1.55; color: #141414;">
+          ${hasSupport ? escapeHtml(report.need_support) : 'Tidak ada support atau escalation khusus yang dicatat untuk report ini.'}
+        </div>
+      </div>
+
+      ${sections.map(([number, label, value, bg]) => `
+        <section style="display: grid; grid-template-columns: 62px 1fr; border: 1px solid #d8dee8; margin-bottom: 14px; min-height: 116px;">
+          <div style="background: #141414; color: white; display: flex; align-items: flex-start; justify-content: center; padding-top: 16px; font-size: 18px; font-weight: 900;">${number}</div>
+          <div style="background: ${bg};">
+            <div style="border-bottom: 1px solid #d8dee8; padding: 12px 16px; font-size: 11px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; color: #334155;">${escapeHtml(label)}</div>
+            <div style="padding: 16px; font-size: 14px; line-height: 1.65; color: #1f2937;">${escapeHtml(value)}</div>
+          </div>
+        </section>
+      `).join('')}
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 26px;">
+        <div style="border-top: 2px solid #141414; padding-top: 12px;">
+          <div style="font-size: 9px; letter-spacing: 1.8px; text-transform: uppercase; color: #64748b; font-weight: 800;">Prepared By</div>
+          <div style="font-size: 14px; font-weight: 900; margin-top: 6px;">${escapeHtml(userName)}</div>
+        </div>
+        <div style="border-top: 2px solid #141414; padding-top: 12px;">
+          <div style="font-size: 9px; letter-spacing: 1.8px; text-transform: uppercase; color: #64748b; font-weight: 800;">Workspace Note</div>
+          <div style="font-size: 12px; line-height: 1.45; margin-top: 6px; color: #475569;">Generated from Ilusa Ops Workspace. Data mengikuti input manual tim harian.</div>
+        </div>
+      </div>
     </div>
-
-    <table style="width: 100%; border-collapse: collapse; margin-bottom: 34px; font-size: 13px;">
-      <tr>
-        <td style="width: 120px; padding: 8px 0; color: #64748b; text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px; font-weight: 700;">Date</td>
-        <td style="padding: 8px 0; font-weight: 700;">${escapeHtml(formatDate(report.report_date))}</td>
-      </tr>
-      <tr>
-        <td style="width: 120px; padding: 8px 0; color: #64748b; text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px; font-weight: 700;">By</td>
-        <td style="padding: 8px 0; font-weight: 700;">${escapeHtml(userName)}</td>
-      </tr>
-      <tr>
-        <td style="width: 120px; padding: 8px 0; color: #64748b; text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px; font-weight: 700;">Division</td>
-        <td style="padding: 8px 0; font-weight: 700;">${escapeHtml(report.division)}</td>
-      </tr>
-    </table>
-
-    ${[
-      ['Highlight', report.highlight],
-      ['Challenge / Rejection', report.challenge],
-      ['Next Plan / Positive Progress', report.next_plan],
-      ['Need Support / Escalation', report.need_support],
-    ].map(([label, value]) => `
-      <section style="border: 1px solid #d8dee8; margin-bottom: 18px;">
-        <div style="background: #f8fafc; border-bottom: 1px solid #d8dee8; padding: 12px 14px; font-size: 11px; font-weight: 800; letter-spacing: 1.3px; text-transform: uppercase; color: #334155;">${escapeHtml(label)}</div>
-        <div style="padding: 16px 14px; font-size: 14px; line-height: 1.65; min-height: 70px; white-space: normal;">${escapeHtml(value)}</div>
-      </section>
-    `).join('')}
-
-    <div style="margin-top: 40px; border-top: 1px solid #d8dee8; padding-top: 14px; font-size: 10px; color: #94a3b8; letter-spacing: 1.5px; text-transform: uppercase;">
-      Generated from Ilusa Ops Workspace
-    </div>
-  </div>
-`;
+  `;
+};
 
 export function DailyReportPage() {
   const { showSuccess, showError } = useToast();
@@ -92,6 +120,7 @@ export function DailyReportPage() {
   const [userFilter, setUserFilter] = useState('All');
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [editingReport, setEditingReport] = useState<DailyReport | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const [clientId, setClientId] = useState('');
   const [reportDate, setReportDate] = useState(getLocalDateString());
@@ -147,6 +176,16 @@ export function DailyReportPage() {
     setNeedSupport('');
   };
 
+  const openCreateModal = () => {
+    resetForm();
+    setIsReportModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsReportModalOpen(false);
+    resetForm();
+  };
+
   const handleEdit = (report: DailyReport) => {
     setEditingReport(report);
     setSelectedReportId(report.id);
@@ -158,6 +197,7 @@ export function DailyReportPage() {
     setChallenge(report.challenge || '');
     setNextPlan(report.next_plan || '');
     setNeedSupport(report.need_support || '');
+    setIsReportModalOpen(true);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -188,7 +228,7 @@ export function DailyReportPage() {
         setSelectedReportId(created.id);
         showSuccess('Daily report berhasil dibuat.');
       }
-      resetForm();
+      closeModal();
     } catch (err: any) {
       showError(err.message || 'Gagal menyimpan daily report.');
     }
@@ -233,46 +273,7 @@ export function DailyReportPage() {
     popup.document.close();
   };
 
-  const exportPng = async () => {
-    if (!selectedReport) return;
-    try {
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="794" height="1123">
-          <foreignObject width="100%" height="100%">${reportHtml}</foreignObject>
-        </svg>
-      `;
-      const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
-      const image = new Image();
-      image.crossOrigin = 'anonymous';
-      image.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 794;
-        canvas.height = 1123;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          URL.revokeObjectURL(url);
-          showError('Browser tidak bisa membuat canvas export.');
-          return;
-        }
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(image, 0, 0);
-        URL.revokeObjectURL(url);
-
-        const link = document.createElement('a');
-        link.download = `${slugify(`daily-report-${selectedClientName}-${selectedReport.report_date}`)}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      };
-      image.onerror = () => {
-        URL.revokeObjectURL(url);
-        showError('Export PNG gagal di browser ini. Coba Export PDF.');
-      };
-      image.src = url;
-    } catch (err: any) {
-      showError(err.message || 'Export PNG gagal.');
-    }
-  };
+  const supportCount = filteredReports.filter(report => report.need_support?.trim()).length;
 
   return (
     <div className="space-y-6">
@@ -281,21 +282,27 @@ export function DailyReportPage() {
           <h1 className="text-2xl font-bold text-[#141414] uppercase tracking-wider">Daily Report</h1>
           <p className="text-[11px] text-slate-500 font-mono mt-0.5">Laporan harian tim per client dengan format siap export.</p>
         </div>
-        <div className="flex flex-wrap gap-2 font-mono text-[10px]">
-          <input type="date" value={dateFilter} onChange={event => setDateFilter(event.target.value)} className="border border-[#141414]/20 bg-white px-3 py-2 rounded-none" />
-          <select value={clientFilter} onChange={event => setClientFilter(event.target.value)} className="border border-[#141414]/20 bg-white px-3 py-2 rounded-none">
-            <option value="All">All Clients</option>
-            {clients.map(client => <option key={client.id} value={client.id}>{client.company_name}</option>)}
-          </select>
-          <select value={divisionFilter} onChange={event => setDivisionFilter(event.target.value)} className="border border-[#141414]/20 bg-white px-3 py-2 rounded-none">
-            <option value="All">All Divisions</option>
-            {DIVISIONS.map(item => <option key={item} value={item}>{item}</option>)}
-          </select>
-          <select value={userFilter} onChange={event => setUserFilter(event.target.value)} className="border border-[#141414]/20 bg-white px-3 py-2 rounded-none">
-            <option value="All">All Team</option>
-            {users.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
-          </select>
-        </div>
+        <button onClick={openCreateModal} className="px-4 py-2.5 bg-[#141414] hover:bg-orange-600 text-white font-mono text-[10px] font-bold uppercase flex items-center gap-2 self-start lg:self-auto">
+          <Plus className="h-4 w-4" />
+          Create Daily Report
+        </button>
+      </div>
+
+      <div className="bg-white border border-[#141414]/15 p-4 flex flex-wrap items-center gap-3 font-mono text-[10px]">
+        <span className="text-slate-500 uppercase font-bold">Filters</span>
+        <input type="date" value={dateFilter} onChange={event => setDateFilter(event.target.value)} className="border border-[#141414]/20 bg-white px-3 py-2 rounded-none" />
+        <select value={clientFilter} onChange={event => setClientFilter(event.target.value)} className="border border-[#141414]/20 bg-white px-3 py-2 rounded-none">
+          <option value="All">All Clients</option>
+          {clients.map(client => <option key={client.id} value={client.id}>{client.company_name}</option>)}
+        </select>
+        <select value={divisionFilter} onChange={event => setDivisionFilter(event.target.value)} className="border border-[#141414]/20 bg-white px-3 py-2 rounded-none">
+          <option value="All">All Divisions</option>
+          {DIVISIONS.map(item => <option key={item} value={item}>{item}</option>)}
+        </select>
+        <select value={userFilter} onChange={event => setUserFilter(event.target.value)} className="border border-[#141414]/20 bg-white px-3 py-2 rounded-none">
+          <option value="All">All Team</option>
+          {users.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+        </select>
       </div>
 
       {missingTable && (
@@ -309,7 +316,7 @@ export function DailyReportPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Report Filter Ini', value: filteredReports.length },
-          { label: 'Need Support', value: filteredReports.filter(report => report.need_support?.trim()).length },
+          { label: 'Need Support', value: supportCount },
           { label: 'Client Terlapor', value: new Set(filteredReports.map(report => report.client_id)).size },
           { label: 'Divisi Aktif', value: new Set(filteredReports.map(report => report.division)).size },
         ].map(card => (
@@ -324,108 +331,40 @@ export function DailyReportPage() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6">
-        <div className="space-y-6">
-          <form onSubmit={handleSubmit} className="bg-white border border-[#141414]/15 p-5 space-y-4">
-            <h2 className="font-bold text-xs uppercase tracking-wider font-mono text-[#141414] flex items-center gap-2">
-              <Plus className="h-4 w-4 text-orange-600" />
-              {editingReport ? 'Edit Daily Report' : 'Create Daily Report'}
-            </h2>
-
-            <div className="grid grid-cols-2 gap-3 font-mono text-[11px]">
-              <div>
-                <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Date *</label>
-                <input type="date" value={reportDate} onChange={event => setReportDate(event.target.value)} className="w-full p-2 border border-[#141414]/20 bg-white rounded-none" required />
-              </div>
-              <div>
-                <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Division *</label>
-                <select value={division} onChange={event => setDivision(event.target.value)} className="w-full p-2 border border-[#141414]/20 bg-white rounded-none">
-                  {DIVISIONS.map(item => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <div className="font-mono text-[11px]">
-              <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Client *</label>
-              <select value={clientId} onChange={event => setClientId(event.target.value)} className="w-full p-2 border border-[#141414]/20 bg-white rounded-none" required>
-                <option value="">Select Client</option>
-                {clients.map(client => <option key={client.id} value={client.id}>{client.company_name}</option>)}
-              </select>
-            </div>
-
-            <div className="font-mono text-[11px]">
-              <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">By</label>
-              <select value={userId} onChange={event => setUserId(event.target.value)} className="w-full p-2 border border-[#141414]/20 bg-white rounded-none">
-                <option value="">Unassigned</option>
-                {users.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
-              </select>
-              {duplicateReport && (
-                <p className="mt-1 text-[9px] text-amber-700 font-bold uppercase">
-                  Report untuk client, tanggal, dan nama ini sudah pernah dibuat.
-                </p>
-              )}
-            </div>
-
-            {[
-              ['Highlight', highlight, setHighlight],
-              ['Challenge / Rejection', challenge, setChallenge],
-              ['Next Plan / Positive Progress', nextPlan, setNextPlan],
-              ['Need Support / Escalation', needSupport, setNeedSupport],
-            ].map(([label, value, setter]) => (
-              <div key={label as string} className="font-mono text-[11px]">
-                <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">{label as string}</label>
-                <textarea
-                  value={value as string}
-                  onChange={event => (setter as React.Dispatch<React.SetStateAction<string>>)(event.target.value)}
-                  rows={3}
-                  className="w-full p-2 border border-[#141414]/20 bg-white rounded-none resize-y leading-relaxed"
-                />
-              </div>
-            ))}
-
-            <div className="pt-3 border-t border-slate-100 flex justify-end gap-2 font-mono text-[10px]">
-              {editingReport && (
-                <button type="button" onClick={resetForm} className="px-4 py-2 border border-slate-200 bg-slate-50 uppercase">Cancel</button>
-              )}
-              <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold uppercase">
-                {editingReport ? 'Update Report' : 'Save Report'}
-              </button>
-            </div>
-          </form>
-
-          <div className="bg-white border border-[#141414]/15">
-            <div className="p-4 border-b border-[#141414]/10 flex items-center justify-between">
-              <h2 className="font-bold text-xs uppercase tracking-wider font-mono text-[#141414]">Report List</h2>
-              <span className="font-mono text-[10px] text-slate-400">{filteredReports.length} records</span>
-            </div>
-            {isLoading ? (
-              <div className="p-5 font-mono text-[11px] text-slate-500">Loading reports...</div>
-            ) : filteredReports.length === 0 ? (
-              <div className="p-4">
-                <EmptyState icon={FileText} title="Belum Ada Daily Report" description="Buat report pertama untuk tanggal dan filter ini." />
-              </div>
-            ) : (
-              <div className="max-h-[520px] overflow-y-auto divide-y divide-slate-100">
-                {filteredReports.map(report => (
-                  <button
-                    key={report.id}
-                    onClick={() => setSelectedReportId(report.id)}
-                    className={`w-full p-3 text-left hover:bg-slate-50 font-mono text-[10px] ${selectedReport?.id === report.id ? 'bg-orange-50' : 'bg-white'}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-black text-[#141414] truncate">{clientMap[report.client_id] || 'Unknown Client'}</div>
-                        <div className="text-slate-500 truncate">{formatDate(report.report_date)} - {report.user_id ? userMap[report.user_id] : '-'}</div>
-                        <div className="text-[8px] uppercase text-orange-700 font-bold mt-1">{report.division}</div>
-                      </div>
-                      {report.need_support?.trim() && (
-                        <span className="shrink-0 bg-amber-50 border border-amber-200 text-amber-700 px-1.5 py-0.5 text-[8px] font-bold uppercase">Support</span>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+        <div className="bg-white border border-[#141414]/15">
+          <div className="p-4 border-b border-[#141414]/10 flex items-center justify-between">
+            <h2 className="font-bold text-xs uppercase tracking-wider font-mono text-[#141414]">Report List</h2>
+            <span className="font-mono text-[10px] text-slate-400">{filteredReports.length} records</span>
           </div>
+          {isLoading ? (
+            <div className="p-5 font-mono text-[11px] text-slate-500">Loading reports...</div>
+          ) : filteredReports.length === 0 ? (
+            <div className="p-4">
+              <EmptyState icon={FileText} title="Belum Ada Daily Report" description="Klik Create Daily Report untuk membuat report pertama pada filter ini." />
+            </div>
+          ) : (
+            <div className="max-h-[760px] overflow-y-auto divide-y divide-slate-100">
+              {filteredReports.map(report => (
+                <button
+                  key={report.id}
+                  onClick={() => setSelectedReportId(report.id)}
+                  className={`w-full p-3 text-left hover:bg-slate-50 font-mono text-[10px] ${selectedReport?.id === report.id ? 'bg-orange-50' : 'bg-white'}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-black text-[#141414] truncate">{clientMap[report.client_id] || 'Unknown Client'}</div>
+                      <div className="text-slate-500 truncate">{formatDate(report.report_date)} - {report.user_id ? userMap[report.user_id] : '-'}</div>
+                      <div className="text-[8px] uppercase text-orange-700 font-bold mt-1">{report.division}</div>
+                      <p className="text-[9px] text-slate-500 normal-case mt-2 line-clamp-2">{report.highlight || 'Belum ada highlight.'}</p>
+                    </div>
+                    {report.need_support?.trim() && (
+                      <span className="shrink-0 bg-amber-50 border border-amber-200 text-amber-700 px-1.5 py-0.5 text-[8px] font-bold uppercase">Support</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="bg-white border border-[#141414]/15 min-h-[720px]">
@@ -440,10 +379,6 @@ export function DailyReportPage() {
                 <button onClick={() => handleDelete(selectedReport)} className="px-3 py-2 border border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-500 uppercase flex items-center gap-1">
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete
-                </button>
-                <button onClick={exportPng} className="px-3 py-2 border border-slate-200 bg-white hover:border-orange-600 uppercase flex items-center gap-1">
-                  <Download className="h-3.5 w-3.5" />
-                  PNG
                 </button>
                 <button onClick={exportPdf} className="px-3 py-2 bg-[#141414] text-white hover:bg-orange-600 uppercase flex items-center gap-1">
                   <FileDown className="h-3.5 w-3.5" />
@@ -464,6 +399,83 @@ export function DailyReportPage() {
           )}
         </div>
       </div>
+
+      {isReportModalOpen && (
+        <div className="fixed inset-0 z-50 bg-[#141414]/65 flex items-center justify-center p-4">
+          <div className="bg-white border border-[#141414] w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-lg">
+            <div className="bg-[#141414] text-white px-5 py-4 flex items-center justify-between">
+              <h3 className="text-xs font-bold font-mono uppercase tracking-widest flex items-center gap-2">
+                <FileText className="h-4 w-4 text-orange-600" />
+                {editingReport ? 'Edit Daily Report' : 'Create Daily Report'}
+              </h3>
+              <button onClick={closeModal} className="text-slate-400 hover:text-white">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono text-[11px]">
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Date *</label>
+                  <input type="date" value={reportDate} onChange={event => setReportDate(event.target.value)} className="w-full p-2 border border-[#141414]/20 bg-white rounded-none" required />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Division *</label>
+                  <select value={division} onChange={event => setDivision(event.target.value)} className="w-full p-2 border border-[#141414]/20 bg-white rounded-none">
+                    {DIVISIONS.map(item => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono text-[11px]">
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">Client *</label>
+                  <select value={clientId} onChange={event => setClientId(event.target.value)} className="w-full p-2 border border-[#141414]/20 bg-white rounded-none" required>
+                    <option value="">Select Client</option>
+                    {clients.map(client => <option key={client.id} value={client.id}>{client.company_name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">By</label>
+                  <select value={userId} onChange={event => setUserId(event.target.value)} className="w-full p-2 border border-[#141414]/20 bg-white rounded-none">
+                    <option value="">Unassigned</option>
+                    {users.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+                  </select>
+                  {duplicateReport && (
+                    <p className="mt-1 text-[9px] text-amber-700 font-bold uppercase">
+                      Report untuk client, tanggal, dan nama ini sudah pernah dibuat.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {[
+                ['Highlight', highlight, setHighlight],
+                ['Challenge / Rejection', challenge, setChallenge],
+                ['Next Plan / Positive Progress', nextPlan, setNextPlan],
+                ['Need Support / Escalation', needSupport, setNeedSupport],
+              ].map(([label, value, setter]) => (
+                <div key={label as string} className="font-mono text-[11px]">
+                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">{label as string}</label>
+                  <textarea
+                    value={value as string}
+                    onChange={event => (setter as React.Dispatch<React.SetStateAction<string>>)(event.target.value)}
+                    rows={4}
+                    className="w-full p-2 border border-[#141414]/20 bg-white rounded-none resize-y leading-relaxed"
+                  />
+                </div>
+              ))}
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2 font-mono text-[10px]">
+                <button type="button" onClick={closeModal} className="px-4 py-2 border border-slate-200 bg-slate-50 uppercase">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold uppercase">
+                  {editingReport ? 'Update Report' : 'Save Report'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
