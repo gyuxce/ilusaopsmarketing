@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
+  Download,
   Edit3,
   FileDown,
   FileText,
@@ -7,6 +8,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import { useClients } from '../hooks/useClients';
 import { useUsers } from '../hooks/useUsers';
 import {
@@ -33,6 +35,9 @@ const escapeHtml = (value?: string | null) =>
 
 const compactText = (value?: string | null) => String(value || '').trim();
 
+const slugify = (value: string) =>
+  value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'daily-report';
+
 const buildReportHtml = ({
   report,
   clientName,
@@ -51,36 +56,36 @@ const buildReportHtml = ({
   ];
 
   return `
-    <div style="width: 794px; min-height: 1123px; box-sizing: border-box; padding: 44px; background: #ffffff; color: #141414; font-family: Arial, sans-serif;">
+    <div style="width: 794px; min-height: 1123px; box-sizing: border-box; padding: 44px; background: #ffffff; color: #141414; font-family: Arial, Helvetica, sans-serif; font-stretch: normal; letter-spacing: 0;">
       <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 28px; border-bottom: 5px solid #141414; padding-bottom: 24px;">
         <div>
-          <div style="font-size: 10px; letter-spacing: 5px; text-transform: uppercase; color: #f15a24; font-weight: 800; margin-bottom: 12px;">ILUSA OPS WORKSPACE</div>
-          <h1 style="font-size: 34px; line-height: 1.05; margin: 0 0 10px; letter-spacing: .2px;">Daily Report</h1>
-          <div style="font-size: 18px; font-weight: 800; color: #334155;">${escapeHtml(clientName)}</div>
+          <div style="font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #f15a24; font-weight: 700; margin-bottom: 12px;">ILUSA DAILY REPORT</div>
+          <h1 style="font-size: 34px; line-height: 1.08; margin: 0 0 10px; font-weight: 800; letter-spacing: 0;">Daily Report</h1>
+          <div style="font-size: 18px; font-weight: 700; color: #334155;">${escapeHtml(clientName)}</div>
         </div>
         <div style="background: #141414; color: white; padding: 16px 18px; min-width: 170px;">
-          <div style="font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #cbd5e1; margin-bottom: 8px;">Report Date</div>
-          <div style="font-size: 18px; font-weight: 900;">${escapeHtml(formatDate(report.report_date))}</div>
+          <div style="font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: #cbd5e1; margin-bottom: 8px; font-weight: 700;">Report Date</div>
+          <div style="font-size: 18px; font-weight: 800; letter-spacing: 0;">${escapeHtml(formatDate(report.report_date))}</div>
         </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 26px 0;">
         <div style="border: 1px solid #d8dee8; padding: 14px; background: #f8fafc;">
-          <div style="font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: #64748b; font-weight: 800; margin-bottom: 8px;">Client</div>
-          <div style="font-size: 14px; line-height: 1.35; font-weight: 900;">${escapeHtml(clientName)}</div>
+          <div style="font-size: 9px; letter-spacing: .8px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 8px;">Client</div>
+          <div style="font-size: 14px; line-height: 1.35; font-weight: 800;">${escapeHtml(clientName)}</div>
         </div>
         <div style="border: 1px solid #d8dee8; padding: 14px; background: #f8fafc;">
-          <div style="font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: #64748b; font-weight: 800; margin-bottom: 8px;">Reported By</div>
-          <div style="font-size: 14px; line-height: 1.35; font-weight: 900;">${escapeHtml(userName)}</div>
+          <div style="font-size: 9px; letter-spacing: .8px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 8px;">Reported By</div>
+          <div style="font-size: 14px; line-height: 1.35; font-weight: 800;">${escapeHtml(userName)}</div>
         </div>
         <div style="border: 1px solid #d8dee8; padding: 14px; background: #f8fafc;">
-          <div style="font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: #64748b; font-weight: 800; margin-bottom: 8px;">Division</div>
-          <div style="font-size: 14px; line-height: 1.35; font-weight: 900;">${escapeHtml(report.division)}</div>
+          <div style="font-size: 9px; letter-spacing: .8px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 8px;">Division</div>
+          <div style="font-size: 14px; line-height: 1.35; font-weight: 800;">${escapeHtml(report.division)}</div>
         </div>
       </div>
 
       <div style="border: 1px solid ${hasSupport ? '#f59e0b' : '#d8dee8'}; background: ${hasSupport ? '#fffbeb' : '#f8fafc'}; padding: 16px 18px; margin-bottom: 22px;">
-        <div style="font-size: 10px; letter-spacing: 2px; text-transform: uppercase; font-weight: 900; color: ${hasSupport ? '#b45309' : '#64748b'}; margin-bottom: 8px;">Executive Attention</div>
+        <div style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-weight: 800; color: ${hasSupport ? '#b45309' : '#64748b'}; margin-bottom: 8px;">Executive Attention</div>
         <div style="font-size: 14px; line-height: 1.55; color: #141414;">
           ${hasSupport ? escapeHtml(report.need_support) : 'Tidak ada support atau escalation khusus yang dicatat untuk report ini.'}
         </div>
@@ -88,22 +93,18 @@ const buildReportHtml = ({
 
       ${sections.map(([number, label, value, bg]) => `
         <section style="display: grid; grid-template-columns: 62px 1fr; border: 1px solid #d8dee8; margin-bottom: 14px; min-height: 116px;">
-          <div style="background: #141414; color: white; display: flex; align-items: flex-start; justify-content: center; padding-top: 16px; font-size: 18px; font-weight: 900;">${number}</div>
+          <div style="background: #141414; color: white; display: flex; align-items: flex-start; justify-content: center; padding-top: 16px; font-size: 18px; font-weight: 800;">${number}</div>
           <div style="background: ${bg};">
-            <div style="border-bottom: 1px solid #d8dee8; padding: 12px 16px; font-size: 11px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; color: #334155;">${escapeHtml(label)}</div>
+            <div style="border-bottom: 1px solid #d8dee8; padding: 12px 16px; font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #334155;">${escapeHtml(label)}</div>
             <div style="padding: 16px; font-size: 14px; line-height: 1.65; color: #1f2937;">${escapeHtml(value)}</div>
           </div>
         </section>
       `).join('')}
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 26px;">
+      <div style="margin-top: 26px;">
         <div style="border-top: 2px solid #141414; padding-top: 12px;">
-          <div style="font-size: 9px; letter-spacing: 1.8px; text-transform: uppercase; color: #64748b; font-weight: 800;">Prepared By</div>
-          <div style="font-size: 14px; font-weight: 900; margin-top: 6px;">${escapeHtml(userName)}</div>
-        </div>
-        <div style="border-top: 2px solid #141414; padding-top: 12px;">
-          <div style="font-size: 9px; letter-spacing: 1.8px; text-transform: uppercase; color: #64748b; font-weight: 800;">Workspace Note</div>
-          <div style="font-size: 12px; line-height: 1.45; margin-top: 6px; color: #475569;">Generated from Ilusa Ops Workspace. Data mengikuti input manual tim harian.</div>
+          <div style="font-size: 9px; letter-spacing: .8px; text-transform: uppercase; color: #64748b; font-weight: 700;">Prepared By</div>
+          <div style="font-size: 14px; font-weight: 800; margin-top: 6px;">${escapeHtml(userName)}</div>
         </div>
       </div>
     </div>
@@ -113,6 +114,7 @@ const buildReportHtml = ({
 export function DailyReportPage() {
   const { showSuccess, showError } = useToast();
   const confirm = useConfirm();
+  const reportExportRef = useRef<HTMLDivElement | null>(null);
 
   const [dateFilter, setDateFilter] = useState(getLocalDateString());
   const [clientFilter, setClientFilter] = useState('All');
@@ -273,6 +275,29 @@ export function DailyReportPage() {
     popup.document.close();
   };
 
+  const exportPng = async () => {
+    if (!selectedReport || !reportExportRef.current) return;
+    try {
+      const dataUrl = await toPng(reportExportRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        width: 794,
+        height: 1123,
+        style: {
+          transform: 'none',
+          transformOrigin: 'top left',
+        },
+      });
+      const link = document.createElement('a');
+      link.download = `${slugify(`daily-report-${selectedClientName}-${selectedReport.report_date}`)}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err: any) {
+      showError(err.message || 'Export PNG gagal. Coba refresh halaman lalu export ulang.');
+    }
+  };
+
   const supportCount = filteredReports.filter(report => report.need_support?.trim()).length;
 
   return (
@@ -380,6 +405,10 @@ export function DailyReportPage() {
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete
                 </button>
+                <button onClick={exportPng} className="px-3 py-2 border border-slate-200 bg-white hover:border-orange-600 uppercase flex items-center gap-1">
+                  <Download className="h-3.5 w-3.5" />
+                  PNG
+                </button>
                 <button onClick={exportPdf} className="px-3 py-2 bg-[#141414] text-white hover:bg-orange-600 uppercase flex items-center gap-1">
                   <FileDown className="h-3.5 w-3.5" />
                   PDF
@@ -399,6 +428,12 @@ export function DailyReportPage() {
           )}
         </div>
       </div>
+
+      {selectedReport && (
+        <div className="fixed left-[-10000px] top-0 pointer-events-none" aria-hidden="true">
+          <div ref={reportExportRef} dangerouslySetInnerHTML={{ __html: reportHtml }} />
+        </div>
+      )}
 
       {isReportModalOpen && (
         <div className="fixed inset-0 z-50 bg-[#141414]/65 flex items-center justify-center p-4">
