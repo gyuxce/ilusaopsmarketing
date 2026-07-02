@@ -56,7 +56,7 @@ const buildReportHtml = ({
   ];
 
   return `
-    <div style="width: 794px; min-height: 1123px; box-sizing: border-box; padding: 44px; background: #ffffff; color: #141414; font-family: Arial, Helvetica, sans-serif; font-stretch: normal; letter-spacing: 0;">
+    <div class="daily-report-page" style="width: 794px; min-height: 1123px; box-sizing: border-box; padding: 44px; background: #ffffff; color: #141414; font-family: Arial, Helvetica, sans-serif; font-stretch: normal; letter-spacing: 0;">
       <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 28px; border-bottom: 5px solid #141414; padding-bottom: 24px;">
         <div>
           <div style="font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #f15a24; font-weight: 700; margin-bottom: 12px;">ILUSA DAILY REPORT</div>
@@ -84,7 +84,7 @@ const buildReportHtml = ({
         </div>
       </div>
 
-      <div style="border: 1px solid ${hasSupport ? '#f59e0b' : '#d8dee8'}; background: ${hasSupport ? '#fffbeb' : '#f8fafc'}; padding: 16px 18px; margin-bottom: 22px;">
+      <div class="daily-report-block" style="border: 1px solid ${hasSupport ? '#f59e0b' : '#d8dee8'}; background: ${hasSupport ? '#fffbeb' : '#f8fafc'}; padding: 16px 18px; margin-bottom: 22px;">
         <div style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-weight: 800; color: ${hasSupport ? '#b45309' : '#64748b'}; margin-bottom: 8px;">Executive Attention</div>
         <div style="font-size: 14px; line-height: 1.55; color: #141414;">
           ${hasSupport ? escapeHtml(report.need_support) : 'Tidak ada support atau escalation khusus yang dicatat untuk report ini.'}
@@ -92,7 +92,7 @@ const buildReportHtml = ({
       </div>
 
       ${sections.map(([number, label, value, bg]) => `
-        <section style="display: grid; grid-template-columns: 62px 1fr; border: 1px solid #d8dee8; margin-bottom: 14px; min-height: 116px;">
+        <section class="daily-report-section" style="display: grid; grid-template-columns: 62px 1fr; border: 1px solid #d8dee8; margin-bottom: 14px; min-height: 116px;">
           <div style="background: #141414; color: white; display: flex; align-items: flex-start; justify-content: center; padding-top: 16px; font-size: 18px; font-weight: 800;">${number}</div>
           <div style="background: ${bg};">
             <div style="border-bottom: 1px solid #d8dee8; padding: 12px 16px; font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #334155;">${escapeHtml(label)}</div>
@@ -266,7 +266,12 @@ export function DailyReportPage() {
           <style>
             @page { size: A4; margin: 0; }
             body { margin: 0; background: #e5e7eb; }
-            @media print { body { background: #fff; } }
+            .daily-report-page { height: auto !important; overflow: visible !important; }
+            .daily-report-block, .daily-report-section { break-inside: auto; page-break-inside: auto; }
+            @media print {
+              body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              .daily-report-page { box-shadow: none; }
+            }
           </style>
         </head>
         <body>${reportHtml}<script>window.onload = function(){ window.print(); };</script></body>
@@ -278,13 +283,20 @@ export function DailyReportPage() {
   const exportPng = async () => {
     if (!selectedReport || !reportExportRef.current) return;
     try {
+      const exportNode = reportExportRef.current;
+      const exportWidth = 794;
+      const exportHeight = Math.ceil(Math.max(exportNode.scrollHeight, exportNode.offsetHeight, 1123));
       const dataUrl = await toPng(reportExportRef.current, {
         cacheBust: true,
         pixelRatio: 2,
         backgroundColor: '#ffffff',
-        width: 794,
-        height: 1123,
+        width: exportWidth,
+        height: exportHeight,
+        canvasWidth: exportWidth * 2,
+        canvasHeight: exportHeight * 2,
         style: {
+          width: `${exportWidth}px`,
+          height: `${exportHeight}px`,
           transform: 'none',
           transformOrigin: 'top left',
         },
