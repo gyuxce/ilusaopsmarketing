@@ -38,6 +38,30 @@ const compactText = (value?: string | null) => String(value || '').trim();
 const slugify = (value: string) =>
   value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'daily-report';
 
+const normalizeBulletLine = (line: string) =>
+  line.trim().replace(/^([\-*•]+|\d+[.)])\s*/, '').trim();
+
+const formatReportBody = (value?: string | null) => {
+  const lines = String(value || '')
+    .split(/\r?\n/)
+    .map(normalizeBulletLine)
+    .filter(Boolean);
+
+  if (lines.length === 0) return '-';
+  if (lines.length === 1) return escapeHtml(lines[0]);
+
+  return `
+    <ul style="list-style: none; margin: 0; padding: 0;">
+      ${lines.map(line => `
+        <li style="display: grid; grid-template-columns: 10px 1fr; gap: 10px; align-items: start; margin: 0 0 8px;">
+          <span style="width: 6px; height: 6px; border-radius: 999px; background: #f15a24; margin-top: 9px;"></span>
+          <span>${escapeHtml(line)}</span>
+        </li>
+      `).join('')}
+    </ul>
+  `;
+};
+
 const buildReportHtml = ({
   report,
   clientName,
@@ -87,7 +111,7 @@ const buildReportHtml = ({
       <div class="daily-report-block" style="border: 1px solid ${hasSupport ? '#f59e0b' : '#d8dee8'}; background: ${hasSupport ? '#fffbeb' : '#f8fafc'}; padding: 16px 18px; margin-bottom: 22px;">
         <div style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-weight: 800; color: ${hasSupport ? '#b45309' : '#64748b'}; margin-bottom: 8px;">Executive Attention</div>
         <div style="font-size: 14px; line-height: 1.55; color: #141414;">
-          ${hasSupport ? escapeHtml(report.need_support) : 'Tidak ada support atau escalation khusus yang dicatat untuk report ini.'}
+          ${hasSupport ? formatReportBody(report.need_support) : 'Tidak ada support atau escalation khusus yang dicatat untuk report ini.'}
         </div>
       </div>
 
@@ -96,7 +120,7 @@ const buildReportHtml = ({
           <div style="background: #141414; color: white; display: flex; align-items: flex-start; justify-content: center; padding-top: 16px; font-size: 18px; font-weight: 800;">${number}</div>
           <div style="background: ${bg};">
             <div style="border-bottom: 1px solid #d8dee8; padding: 12px 16px; font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #334155;">${escapeHtml(label)}</div>
-            <div style="padding: 16px; font-size: 14px; line-height: 1.65; color: #1f2937;">${escapeHtml(value)}</div>
+            <div style="padding: 16px; font-size: 14px; line-height: 1.65; color: #1f2937;">${formatReportBody(value)}</div>
           </div>
         </section>
       `).join('')}
